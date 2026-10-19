@@ -6,7 +6,9 @@ use clap::{Parser, Subcommand, ValueEnum};
 use emperor::accept::{Selection, accept};
 use emperor::check::{CheckOptions, check};
 use emperor::doorstop::Tree;
-use emperor::{evidence, locate, lockfile, report};
+use emperor::evidence::{self, Evidence};
+use emperor::lockfile::{self, Fingerprints};
+use emperor::{locate, report};
 
 /// `check` found problems.
 const EXIT_PROBLEMS: u8 = 1;
@@ -80,10 +82,17 @@ fn main() -> ExitCode {
     })
 }
 
-fn run_check(root: &Path, options: CheckOptions, format: Format) -> emperor::Result<ExitCode> {
+/// The requirements, their justifications and the accepted fingerprints.
+fn load_project(root: &Path) -> emperor::Result<(Tree, Evidence, Fingerprints)> {
     let tree = Tree::load(root)?;
     let evidence = evidence::gather(&tree)?;
-    let problems = check(&tree, &evidence, &lockfile::read(root)?, &options)?;
+    let locked = lockfile::read(root)?;
+    Ok((tree, evidence, locked))
+}
+
+fn run_check(root: &Path, options: CheckOptions, format: Format) -> emperor::Result<ExitCode> {
+    let (tree, evidence, locked) = load_project(root)?;
+    let problems = check(&tree, &evidence, &locked, &options)?;
     let report = match format {
         Format::Human => report::human(&problems),
         Format::Json => report::json(&problems),
@@ -100,14 +109,13 @@ fn run_check(root: &Path, options: CheckOptions, format: Format) -> emperor::Res
 }
 
 fn run_accept(root: &Path, ids: Vec<String>, all: bool) -> emperor::Result<ExitCode> {
-    let tree = Tree::load(root)?;
+    let (tree, evidence, locked) = load_project(root)?;
     let selection = if all {
         Selection::All
     } else {
         Selection::Requirements(ids)
     };
-    let evidence = evidence::gather(&tree)?;
-    let accepted = accept(&tree, &evidence, &lockfile::read(root)?, &selection)?;
+    let accepted = accept(&tree, &evidence, &locked, &selection)?;
     lockfile::write(root, &accepted)?;
     Ok(ExitCode::SUCCESS)
 }

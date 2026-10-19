@@ -10,6 +10,7 @@ pub mod lockfile;
 pub mod problem;
 pub mod report;
 pub mod rust_source;
+pub mod rust_tags;
 #[cfg(test)]
 mod test_support;
 

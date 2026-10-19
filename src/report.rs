@@ -22,11 +22,14 @@ pub fn human(problems: &[Problem]) -> String {
 
 fn summary(problems: &[Problem]) -> String {
     let requirements: BTreeSet<&str> = problems.iter().filter_map(Problem::requirement).collect();
-    let mut summary = format!(
-        "{} in {}.",
-        counted(problems.len(), "problem"),
-        counted(requirements.len(), "requirement")
-    );
+    let mut summary = counted(problems.len(), "problem");
+    if !requirements.is_empty() {
+        summary.push_str(&format!(
+            " in {}",
+            counted(requirements.len(), "requirement")
+        ));
+    }
+    summary.push('.');
     let acceptable: BTreeSet<&str> = problems
         .iter()
         .filter(|problem| problem.is_resolved_by_accepting())
@@ -140,6 +143,18 @@ mod tests {
             justification: file("a.rs"),
         }];
         assert!(human(&problems).ends_with("\n1 problem in 1 requirement.\n"));
+    }
+
+    #[test]
+    fn human_summary_leaves_out_requirements_when_no_problem_is_about_one() {
+        let problems = [Problem::InvalidTag {
+            location: crate::problem::Location {
+                path: "lib.rs".into(),
+                line: 1,
+            },
+            reason: "justifies is only supported on functions".into(),
+        }];
+        assert!(human(&problems).ends_with("\n1 problem.\n"));
     }
 
     #[test]

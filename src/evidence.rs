@@ -11,7 +11,10 @@ use crate::doorstop::Tree;
 use crate::error::{Error, Result, read_to_string};
 use crate::justification::{self, Justification};
 use crate::problem::{Location, Problem};
-use crate::rust_source::{self, JUSTIFIES, Tag, TagKind};
+use crate::rust_tags::{self, JUSTIFIES, Tag, TagKind};
+
+const MISPLACED_TAG: &str = "justifies is only supported on functions";
+const INVALID_TAG_ARGUMENTS: &str = "justifies expects requirement IDs as string literals";
 
 #[derive(Debug, Default)]
 pub struct Evidence {
@@ -25,9 +28,7 @@ impl Evidence {
     pub fn of(&self, uid: &str) -> impl Iterator<Item = &Justification> {
         self.justifications.get(uid).into_iter().flatten()
     }
-}
 
-impl Evidence {
     fn add(&mut self, uid: &str, justification: Justification) {
         self.justifications
             .entry(uid.to_string())
@@ -44,31 +45,40 @@ impl Evidence {
             TagKind::Justifies {
                 function,
                 requirements,
-            } => {
-                for uid in requirements {
-                    if tree.items.contains_key(&uid) {
-                        let justification = Justification::RustFn {
-                            path: path.to_string(),
-                            item: function.clone(),
-                        };
-                        self.add(&uid, justification);
-                    } else {
-                        self.problems.push(Problem::UnknownRequirement {
-                            requirement: uid,
-                            location: location.clone(),
-                        });
-                    }
-                }
-            }
-            TagKind::Misplaced => self.problems.push(Problem::InvalidTag {
-                location,
-                reason: "justifies is only supported on functions".to_string(),
-            }),
-            TagKind::InvalidArguments => self.problems.push(Problem::InvalidTag {
-                location,
-                reason: "justifies expects requirement IDs as string literals".to_string(),
-            }),
+            } => self.add_tagged_function(tree, location, &function, requirements),
+            TagKind::Misplaced => self.add_invalid_tag(location, MISPLACED_TAG),
+            TagKind::InvalidArguments => self.add_invalid_tag(location, INVALID_TAG_ARGUMENTS),
         }
+    }
+
+    fn add_tagged_function(
+        &mut self,
+        tree: &Tree,
+        location: Location,
+        function: &str,
+        requirements: Vec<String>,
+    ) {
+        for uid in requirements {
+            if tree.items.contains_key(&uid) {
+                let justification = Justification::RustFn {
+                    path: location.path.clone(),
+                    item: function.to_string(),
+                };
+                self.add(&uid, justification);
+            } else {
+                self.problems.push(Problem::UnknownRequirement {
+                    requirement: uid,
+                    location: location.clone(),
+                });
+            }
+        }
+    }
+
+    fn add_invalid_tag(&mut self, location: Location, reason: &str) {
+        self.problems.push(Problem::InvalidTag {
+            location,
+            reason: reason.to_string(),
+        });
     }
 }
 
@@ -85,7 +95,7 @@ pub fn gather(tree: &Tree) -> Result<Evidence> {
         if !source.contains(JUSTIFIES) {
             continue;
         }
-        let tags = rust_source::justifies_tags(&source).map_err(Error::parse(&path))?;
+        let tags = rust_tags::justifies_tags(&source).map_err(Error::parse(&path))?;
         let relative = relative_path(&tree.root, &path);
         for tag in tags {
             evidence.add_tag(tree, &relative, tag);
