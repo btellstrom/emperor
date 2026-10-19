@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
@@ -6,6 +6,11 @@ use clap::{Parser, Subcommand};
 use emperor::check::{CheckOptions, check};
 use emperor::doorstop::Tree;
 use emperor::lockfile;
+
+/// `check` found problems.
+const EXIT_PROBLEMS: u8 = 1;
+/// emperor could not complete the command.
+const EXIT_ERROR: u8 = 2;
 
 #[derive(Parser)]
 #[command(
@@ -41,45 +46,46 @@ enum Command {
 }
 
 fn main() -> ExitCode {
-    match run(Cli::parse()) {
-        Ok(code) => code,
-        Err(error) => {
-            eprintln!("error: {error}");
-            ExitCode::from(2)
-        }
-    }
-}
-
-fn run(cli: Cli) -> emperor::Result<ExitCode> {
-    let tree = Tree::load(&cli.root)?;
-    let mut locked = lockfile::read(&cli.root)?;
-
-    match cli.command {
+    let cli = Cli::parse();
+    let result = match cli.command {
         Command::Check {
             require_justification,
-        } => {
-            let options = CheckOptions {
+        } => run_check(
+            &cli.root,
+            CheckOptions {
                 require_justification,
-            };
-            let problems = check(&tree, &locked, &options)?;
-            for problem in &problems {
-                println!("{problem}");
-            }
-            Ok(if problems.is_empty() {
-                ExitCode::SUCCESS
-            } else {
-                ExitCode::FAILURE
-            })
-        }
-        Command::Accept { ids, all } => {
-            let ids = if all {
-                tree.items.keys().cloned().collect()
-            } else {
-                ids
-            };
-            emperor::accept(&tree, &mut locked, &ids)?;
-            lockfile::write(&cli.root, &locked)?;
-            Ok(ExitCode::SUCCESS)
-        }
+            },
+        ),
+        Command::Accept { ids, all } => run_accept(&cli.root, ids, all),
+    };
+    result.unwrap_or_else(|error| {
+        eprintln!("error: {error}");
+        ExitCode::from(EXIT_ERROR)
+    })
+}
+
+fn run_check(root: &Path, options: CheckOptions) -> emperor::Result<ExitCode> {
+    let tree = Tree::load(root)?;
+    let problems = check(&tree, &lockfile::read(root)?, &options)?;
+    for problem in &problems {
+        println!("{problem}");
     }
+    Ok(if problems.is_empty() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::from(EXIT_PROBLEMS)
+    })
+}
+
+fn run_accept(root: &Path, ids: Vec<String>, all: bool) -> emperor::Result<ExitCode> {
+    let tree = Tree::load(root)?;
+    let mut locked = lockfile::read(root)?;
+    let ids = if all {
+        tree.items.keys().cloned().collect()
+    } else {
+        ids
+    };
+    emperor::accept(&tree, &mut locked, &ids)?;
+    lockfile::write(root, &locked)?;
+    Ok(ExitCode::SUCCESS)
 }

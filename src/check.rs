@@ -2,8 +2,8 @@
 
 use std::fmt;
 
-use crate::Result;
 use crate::doorstop::Tree;
+use crate::error::Result;
 use crate::fingerprint;
 use crate::justification::{self, Justification};
 use crate::lockfile::Fingerprints;
@@ -193,7 +193,6 @@ mod tests {
         fn check(&self, options: CheckOptions) -> Vec<Problem> {
             let tree = Tree {
                 root: self.project.path().to_path_buf(),
-                documents: Vec::new(),
                 items: self
                     .items
                     .iter()

@@ -6,7 +6,7 @@ use std::path::Path;
 
 use sha2::{Digest, Sha256};
 
-use crate::Result;
+use crate::error::{Error, Result};
 use crate::justification::Justification;
 
 /// The fingerprint of a justification, or `None` when it cannot be found.
@@ -20,7 +20,7 @@ fn of_file(path: &Path) -> Result<Option<String>> {
     match fs::read(path) {
         Ok(contents) => Ok(Some(sha256(&contents))),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(format!("{}: {error}", path.display()).into()),
+        Err(error) => Err(Error::io(path)(error)),
     }
 }
 
