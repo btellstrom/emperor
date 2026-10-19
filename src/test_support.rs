@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use tempfile::TempDir;
 
-use crate::doorstop::{Item, Reference, Tree};
+use crate::doorstop::{Entry, Item, Tree};
 use crate::fingerprint;
 use crate::justification::Justification;
 use crate::lockfile::Fingerprints;
@@ -33,7 +33,11 @@ impl Project {
         let item = Item {
             uid: uid.to_string(),
             active: true,
-            references: files.iter().map(|file| Reference::file(file)).collect(),
+            references: files
+                .iter()
+                .map(|file| Entry::new("file", file, None))
+                .collect(),
+            justified_by: Vec::new(),
         };
         self.items.insert(uid.to_string(), item);
         self

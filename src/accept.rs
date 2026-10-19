@@ -64,7 +64,7 @@ fn selected_requirements(
 
 fn fingerprints_of(tree: &Tree, item: &Item) -> Result<BTreeMap<String, String>> {
     let mut fingerprints = BTreeMap::new();
-    for justification in justification::of_item(item) {
+    for justification in justification::of_item(item)? {
         let Some(fingerprint) = fingerprint::of(&tree.root, &justification)? else {
             return Err(Error::JustificationNotFound {
                 requirement: item.uid.clone(),

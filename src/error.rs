@@ -20,6 +20,10 @@ pub enum Error {
     DuplicateRequirement(String),
     #[error("unknown requirement {0}")]
     UnknownRequirement(String),
+    #[error("{requirement}: unknown justification type {kind}")]
+    UnknownJustificationType { requirement: String, kind: String },
+    #[error("{requirement}: a {kind} justification needs an `item`")]
+    IncompleteJustification { requirement: String, kind: String },
     #[error("{requirement}: {justification} not found")]
     JustificationNotFound {
         requirement: String,

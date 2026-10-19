@@ -5,6 +5,7 @@ pub mod error;
 pub mod fingerprint;
 pub mod justification;
 pub mod lockfile;
+pub mod rust_source;
 #[cfg(test)]
 mod test_support;
 

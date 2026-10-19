@@ -75,7 +75,7 @@ impl fmt::Display for Problem {
 pub fn check(tree: &Tree, locked: &Fingerprints, options: &CheckOptions) -> Result<Vec<Problem>> {
     let mut problems = Vec::new();
     for item in tree.items.values().filter(|item| item.active) {
-        let justifications = justification::of_item(item);
+        let justifications = justification::of_item(item)?;
         if justifications.is_empty() && options.require_justification {
             problems.push(Problem::Unjustified {
                 requirement: item.uid.clone(),

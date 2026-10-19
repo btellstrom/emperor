@@ -46,6 +46,15 @@ struct ItemFixture {
     active: bool,
     links: Vec<String>,
     references: Vec<String>,
+    justified_by: Vec<JustifiedBy>,
+}
+
+/// An entry of the custom `justified_by` attribute.
+#[derive(Debug, Clone)]
+struct JustifiedBy {
+    kind: String,
+    item: String,
+    path: String,
 }
 
 impl ItemFixture {
@@ -55,14 +64,24 @@ impl ItemFixture {
             active: true,
             links: Vec::new(),
             references: Vec::new(),
+            justified_by: Vec::new(),
         }
     }
 
     fn render(&self) -> String {
-        let mut yaml = format!(
-            "active: {}\nderived: false\nheader: ''\nlevel: 1.0\n",
-            self.active
-        );
+        let mut yaml = format!("active: {}\nderived: false\nheader: ''\n", self.active);
+        if !self.justified_by.is_empty() {
+            yaml += &yaml_list(
+                "justified_by",
+                self.justified_by.iter().map(|entry| {
+                    format!(
+                        "- item: {}\n  path: {}\n  type: {}\n",
+                        entry.item, entry.path, entry.kind
+                    )
+                }),
+            );
+        }
+        yaml += "level: 1.0\n";
         yaml += &yaml_list("links", self.links.iter().map(|uid| format!("- {uid}\n")));
         yaml += "normative: true\nref: ''\n";
         if !self.references.is_empty() {
@@ -221,6 +240,29 @@ fn requirement_referencing_file(world: &mut ProjectWorld, uid: String, path: Str
     world.add_item(&uid, item);
 }
 
+#[given(expr = "requirement {string} justified by Rust function {string} in {string}")]
+fn requirement_justified_by_rust_function(
+    world: &mut ProjectWorld,
+    uid: String,
+    function: String,
+    path: String,
+) {
+    requirement_justified_by(world, uid, "rust-fn".to_string(), function, path);
+}
+
+#[given(expr = "requirement {string} justified by {string} {string} in {string}")]
+fn requirement_justified_by(
+    world: &mut ProjectWorld,
+    uid: String,
+    kind: String,
+    item: String,
+    path: String,
+) {
+    let mut fixture = ItemFixture::new(&uid);
+    fixture.justified_by.push(JustifiedBy { kind, item, path });
+    world.add_item(&uid, fixture);
+}
+
 #[given(expr = "requirement {string} without justifications")]
 fn requirement_without_justifications(world: &mut ProjectWorld, uid: String) {
     world.add_item(&uid, ItemFixture::new(&uid));
@@ -270,6 +312,51 @@ fn file_is_modified(world: &mut ProjectWorld, path: String) {
 #[when(expr = "{string} is deleted")]
 fn file_is_deleted(world: &mut ProjectWorld, path: String) {
     fs::remove_file(world.path(&path)).unwrap();
+}
+
+#[given(expr = "in {string} {string} is replaced with {string}")]
+#[when(expr = "in {string} {string} is replaced with {string}")]
+fn text_replaced(world: &mut ProjectWorld, path: String, from: String, to: String) {
+    let (from, to) = (unescape(&from), unescape(&to));
+    let contents = fs::read_to_string(world.path(&path)).unwrap();
+    assert!(contents.contains(&from), "{path} does not contain {from:?}");
+    world.write_file(&path, &contents.replace(&from, &to));
+}
+
+#[when(expr = "{string} is reformatted with all whitespace inside {string} doubled")]
+fn whitespace_doubled(world: &mut ProjectWorld, path: String, function: String) {
+    let contents = fs::read_to_string(world.path(&path)).unwrap();
+    let (start, end) = function_span(&contents, &function);
+    let doubled = contents[start..end]
+        .replace(' ', "  ")
+        .replace('\n', "\n\n");
+    world.write_file(
+        &path,
+        &format!("{}{doubled}{}", &contents[..start], &contents[end..]),
+    );
+}
+
+#[when(expr = "the comment {string} is added inside {string} in {string}")]
+fn comment_added(world: &mut ProjectWorld, comment: String, function: String, path: String) {
+    let contents = fs::read_to_string(world.path(&path)).unwrap();
+    let (start, _) = function_span(&contents, &function);
+    let body = start + contents[start..].find('\n').unwrap() + 1;
+    let commented = format!("{}    {comment}\n{}", &contents[..body], &contents[body..]);
+    world.write_file(&path, &commented);
+}
+
+/// Byte range from `fn <name>` to the end of the function, assuming it closes with "\n}".
+fn function_span(contents: &str, function: &str) -> (usize, usize) {
+    let start = contents
+        .find(&format!("fn {function}"))
+        .expect("function exists");
+    let end = start + contents[start..].find("\n}").expect("function ends") + 2;
+    (start, end)
+}
+
+/// Gherkin strings write newlines and quotes as `\n` and `\"`.
+fn unescape(text: &str) -> String {
+    text.replace("\\n", "\n").replace("\\\"", "\"")
 }
 
 #[when(expr = "a trailing newline is appended to {string}")]

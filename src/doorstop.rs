@@ -48,19 +48,23 @@ impl Document {
     }
 }
 
+/// An entry of Doorstop's `references` or emperor's `justified_by` attribute.
 #[derive(Debug, Clone, Deserialize)]
-pub struct Reference {
-    pub path: String,
+pub struct Entry {
     #[serde(rename = "type")]
     pub kind: String,
+    pub path: String,
+    /// What to look for inside the file, e.g. a Rust function's module path.
+    pub item: Option<String>,
 }
 
 #[cfg(test)]
-impl Reference {
-    pub fn file(path: &str) -> Reference {
-        Reference {
+impl Entry {
+    pub fn new(kind: &str, path: &str, item: Option<&str>) -> Entry {
+        Entry {
+            kind: kind.to_string(),
             path: path.to_string(),
-            kind: "file".to_string(),
+            item: item.map(str::to_string),
         }
     }
 }
@@ -69,7 +73,8 @@ impl Reference {
 struct ItemFile {
     #[serde(default = "default_active")]
     active: bool,
-    references: Option<Vec<Reference>>,
+    references: Option<Vec<Entry>>,
+    justified_by: Option<Vec<Entry>>,
 }
 
 fn default_active() -> bool {
@@ -80,7 +85,10 @@ fn default_active() -> bool {
 pub struct Item {
     pub uid: String,
     pub active: bool,
-    pub references: Vec<Reference>,
+    /// Doorstop's own `references` attribute.
+    pub references: Vec<Entry>,
+    /// The custom `justified_by` attribute.
+    pub justified_by: Vec<Entry>,
 }
 
 #[derive(Debug)]
@@ -192,6 +200,7 @@ fn load_item(path: &Path) -> Result<Item> {
         uid,
         active: file.active,
         references: file.references.unwrap_or_default(),
+        justified_by: file.justified_by.unwrap_or_default(),
     })
 }
 
