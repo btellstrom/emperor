@@ -24,6 +24,16 @@ pub fn fingerprint_function(source: &str, path: &str) -> syn::Result<Option<Stri
         .map(|function| sha256(canonical_text(function.to_token_stream()).as_bytes())))
 }
 
+/// The source text of the function at `path`, from its first attribute to its end.
+pub fn function_source(source: &str, path: &str) -> syn::Result<Option<String>> {
+    let file = syn::parse_file(source)?;
+    Ok(find_function(&file.items, path).map(|function| {
+        let span = function.span();
+        let lines: Vec<&str> = source.lines().collect();
+        lines[span.start().line - 1..span.end().line].join("\n")
+    }))
+}
+
 /// Whether the function at `path` is a test, i.e. has an attribute such as `#[test]`
 /// or `#[tokio::test]`.
 pub fn is_test_function(source: &str, path: &str) -> syn::Result<bool> {
@@ -176,6 +186,17 @@ mod tests {
             fingerprint(&qualified, "rejects_bad_password"),
             Some(original())
         );
+    }
+
+    #[test]
+    fn extracts_the_source_of_a_function() {
+        assert_eq!(
+            function_source(SOURCE, "rejects_bad_password")
+                .unwrap()
+                .unwrap(),
+            "#[test]\nfn rejects_bad_password() {\n    assert!(!login(\"alice\", \"wrong\"));\n}"
+        );
+        assert_eq!(function_source(SOURCE, "missing").unwrap(), None);
     }
 
     #[test]

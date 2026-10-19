@@ -74,6 +74,7 @@ impl Reference {
 struct ItemFile {
     #[serde(default = "default_active")]
     active: bool,
+    text: Option<String>,
     references: Option<Vec<Reference>>,
     justified_by: Option<Vec<Reference>>,
 }
@@ -86,6 +87,8 @@ fn default_active() -> bool {
 pub struct Item {
     pub uid: String,
     pub active: bool,
+    /// The requirement itself, as Doorstop stores it.
+    pub text: String,
     /// Doorstop's own `references` attribute.
     pub references: Vec<Reference>,
     /// The custom `justified_by` attribute.
@@ -200,6 +203,7 @@ fn load_item(path: &Path) -> Result<Item> {
     Ok(Item {
         uid,
         active: file.active,
+        text: file.text.unwrap_or_default().trim().to_string(),
         references: file.references.unwrap_or_default(),
         justified_by: file.justified_by.unwrap_or_default(),
     })
@@ -318,6 +322,19 @@ mod tests {
             .document("reqs/low", "LLR")
             .item("reqs/low/LLR001.yml");
         assert_eq!(layout.uids(), ["LLR001", "REQ001"]);
+    }
+
+    #[test]
+    fn loads_the_text_of_a_requirement() {
+        let layout = Layout::new().document("reqs", "REQ").file(
+            "reqs/REQ001.yml",
+            "text: |\n  Login shall reject a wrong password\n",
+        );
+        let tree = Tree::load(layout.0.path()).unwrap();
+        assert_eq!(
+            tree.items["REQ001"].text,
+            "Login shall reject a wrong password"
+        );
     }
 
     #[test]

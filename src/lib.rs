@@ -6,6 +6,7 @@ pub mod evidence;
 mod files;
 pub mod fingerprint;
 pub mod gherkin_source;
+pub mod judge;
 pub mod justification;
 pub mod locate;
 pub mod lockfile;

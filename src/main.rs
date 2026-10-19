@@ -7,6 +7,7 @@ use emperor::accept::{Selection, accept};
 use emperor::check::{CheckOptions, check};
 use emperor::doorstop::Tree;
 use emperor::evidence::{self, Evidence};
+use emperor::judge::{self, Fulfilment};
 use emperor::lockfile::{self, Fingerprints};
 use emperor::test_results::TestResults;
 use emperor::{Error, locate, report};
@@ -54,6 +55,15 @@ enum Command {
         #[arg(long, value_enum, default_value_t = Format::Human)]
         format: Format,
     },
+    /// Ask the judge configured in emperor.toml whether requirements are fulfilled.
+    Judge {
+        /// Requirement IDs to judge.
+        #[arg(required = true)]
+        ids: Vec<String>,
+        /// Fail when the judge finds a requirement unfulfilled.
+        #[arg(long)]
+        fail_on_unfulfilled: bool,
+    },
     /// Record the current justifications of requirements as reviewed.
     Accept {
         /// Requirement IDs to accept.
@@ -79,6 +89,10 @@ fn main() -> ExitCode {
             format,
         ),
         Command::Accept { ids, all } => run_accept(&cli.root, ids, all),
+        Command::Judge {
+            ids,
+            fail_on_unfulfilled,
+        } => run_judge(&cli.root, &ids, fail_on_unfulfilled),
     };
     result.unwrap_or_else(|error| {
         eprintln!("error: {error}");
@@ -141,4 +155,21 @@ fn run_accept(root: &Path, ids: Vec<String>, all: bool) -> emperor::Result<ExitC
     let accepted = accept(&tree, &evidence, &locked, &selection)?;
     lockfile::write(root, &accepted)?;
     Ok(ExitCode::SUCCESS)
+}
+
+fn run_judge(root: &Path, ids: &[String], fail_on_unfulfilled: bool) -> emperor::Result<ExitCode> {
+    let config = judge::load_config(root)?;
+    let (tree, evidence, _) = load_project(root)?;
+    let mut any_unfulfilled = false;
+    for uid in ids {
+        let request = judge::request(&tree, &evidence, uid)?;
+        let judgement = judge::judge(root, &config, uid, &request)?;
+        println!("{judgement}");
+        any_unfulfilled |= judgement.verdict.verdict == Fulfilment::Unfulfilled;
+    }
+    Ok(if any_unfulfilled && fail_on_unfulfilled {
+        ExitCode::from(EXIT_PROBLEMS)
+    } else {
+        ExitCode::SUCCESS
+    })
 }

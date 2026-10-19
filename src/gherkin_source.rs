@@ -83,6 +83,14 @@ pub fn fingerprint_scenario(feature: &Feature, name: &str) -> Option<String> {
     Some(sha256(text.as_bytes()))
 }
 
+/// The source text of the named scenario.
+pub fn scenario_source(feature: &Feature, source: &str, name: &str) -> Option<String> {
+    let (scenario, _) = find_scenario(feature, name)?;
+    source
+        .get(scenario.span.start..scenario.span.end)
+        .map(str::to_string)
+}
+
 /// The line the named scenario starts on.
 pub fn scenario_line(feature: &Feature, name: &str) -> Option<usize> {
     find_scenario(feature, name).map(|(scenario, _)| scenario.position.line)
@@ -236,6 +244,12 @@ Feature: Login
         let source = "Feature: F\n  @justifies:REQ001\n  Scenario: Same\n    Then a\n  Scenario: Same\n    Then b\n";
         assert_eq!(duplicate_tagged_name(&feature(source)), Some("Same".into()));
         assert_eq!(duplicate_tagged_name(&feature(SOURCE)), None);
+    }
+
+    #[test]
+    fn extracts_the_source_of_a_scenario() {
+        let source = scenario_source(&feature(SOURCE), SOURCE, "Untagged").unwrap();
+        assert_eq!(source.trim_end(), "Scenario: Untagged\n    Then nothing");
     }
 
     #[test]

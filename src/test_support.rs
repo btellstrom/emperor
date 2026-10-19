@@ -33,6 +33,7 @@ impl Project {
         let item = Item {
             uid: uid.to_string(),
             active: true,
+            text: String::new(),
             references: files
                 .iter()
                 .map(|file| Reference::new("file", file, None))
@@ -59,6 +60,11 @@ impl Project {
             .unwrap()
             .justified_by
             .push(reference);
+    }
+
+    pub fn text(mut self, uid: &str, text: &str) -> Project {
+        self.items.get_mut(uid).unwrap().text = text.to_string();
+        self
     }
 
     pub fn inactive(mut self, uid: &str) -> Project {

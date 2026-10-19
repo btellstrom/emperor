@@ -108,6 +108,7 @@ mod tests {
         Item {
             uid: "REQ001".to_string(),
             active: true,
+            text: String::new(),
             references,
             justified_by,
         }

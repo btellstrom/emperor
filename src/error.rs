@@ -18,6 +18,10 @@ pub enum Error {
     UnknownItemFormat { prefix: String, format: String },
     #[error("{}: duplicate scenario name \"{name}\"", path.display())]
     DuplicateScenario { path: PathBuf, name: String },
+    #[error("no judge configured in emperor.toml")]
+    NoJudge,
+    #[error("judge failed for {requirement}: {reason}")]
+    JudgeFailed { requirement: String, reason: String },
     #[error("emperor.lock: unknown justification {0}")]
     UnknownLockfileKey(String),
     #[error("requirement {0} is defined more than once")]

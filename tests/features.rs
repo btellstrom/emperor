@@ -242,6 +242,19 @@ fn document_with_item_format(world: &mut ProjectWorld, prefix: String, item_form
     create_document(world, prefix, None, &item_format);
 }
 
+#[given(expr = "requirement {string} with text {string} referencing file {string}")]
+fn requirement_with_text_referencing_file(
+    world: &mut ProjectWorld,
+    uid: String,
+    text: String,
+    path: String,
+) {
+    world.ensure_file(&path);
+    let mut item = ItemFixture::new(&text);
+    item.references.push(path);
+    world.add_item(&uid, item);
+}
+
 #[given(expr = "requirement {string} referencing file {string}")]
 fn requirement_referencing_file(world: &mut ProjectWorld, uid: String, path: String) {
     world.ensure_file(&path);
@@ -426,6 +439,54 @@ fn junit_empty(world: &mut ProjectWorld, report: String) {
     world.write_file(&report, &junit_report(""));
 }
 
+// Judges
+
+/// Configures a judge script that records its input and calls, then runs `body`.
+fn configure_judge(world: &mut ProjectWorld, body: &str) {
+    let script =
+        format!("#!/bin/sh\ncat > judge-input.json\necho called >> judge-calls.log\n{body}\n");
+    world.write_file("judge.sh", &script);
+    world.write_file(
+        "emperor.toml",
+        "[judge]\ncommand = [\"sh\", \"judge.sh\"]\n",
+    );
+}
+
+#[given(expr = "a judge that answers {string} with reason {string}")]
+fn judge_answers(world: &mut ProjectWorld, verdict: String, reason: String) {
+    let answer = format!("{{\"verdict\": \"{verdict}\", \"reason\": \"{reason}\"}}");
+    configure_judge(world, &format!("printf '%s\\n' '{answer}'"));
+}
+
+#[given(expr = "a judge that exits with status {int}")]
+fn judge_exits_with(world: &mut ProjectWorld, status: i32) {
+    configure_judge(world, &format!("exit {status}"));
+}
+
+#[then("the judge received:")]
+fn judge_received(world: &mut ProjectWorld, step: &Step) {
+    let mut expected = step.docstring.clone().expect("the step has a doc string");
+    for (path, _) in world
+        .items
+        .values()
+        .flat_map(|item| item.references.iter().map(|path| (path.clone(), ())))
+    {
+        let contents = fs::read_to_string(world.path(&path)).unwrap();
+        let placeholder = format!("\"<contents of {path}>\"");
+        expected = expected.replace(&placeholder, &serde_json::to_string(&contents).unwrap());
+    }
+    let expected: serde_json::Value = serde_json::from_str(&expected).expect("expected JSON");
+    let received = fs::read_to_string(world.path("judge-input.json")).expect("the judge ran");
+    let received: serde_json::Value = serde_json::from_str(&received).expect("the judge got JSON");
+    assert_eq!(received, expected);
+}
+
+#[then(expr = "the judge was called {int} time(s)")]
+fn judge_called(world: &mut ProjectWorld, expected: usize) {
+    let calls = fs::read_to_string(world.path("judge-calls.log")).unwrap_or_default();
+    assert_eq!(calls.lines().count(), expected);
+}
+
 // Running emperor
 
 #[given(expr = "the justifications of {string} have been accepted")]
@@ -444,6 +505,11 @@ fn run_from_another_folder(world: &mut ProjectWorld, command: String) {
     let project = world.project.path().display().to_string();
     let elsewhere = TempDir::new().unwrap();
     world.run_in(elsewhere.path(), &command.replace("<project>", &project));
+}
+
+#[given(expr = "I have run {string}")]
+fn have_run(world: &mut ProjectWorld, command: String) {
+    world.run(&command);
 }
 
 #[when(expr = "I run {string}")]
