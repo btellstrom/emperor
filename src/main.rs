@@ -3,6 +3,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
+use emperor::accept::{Selection, accept};
 use emperor::check::{CheckOptions, check};
 use emperor::doorstop::Tree;
 use emperor::lockfile;
@@ -79,13 +80,12 @@ fn run_check(root: &Path, options: CheckOptions) -> emperor::Result<ExitCode> {
 
 fn run_accept(root: &Path, ids: Vec<String>, all: bool) -> emperor::Result<ExitCode> {
     let tree = Tree::load(root)?;
-    let mut locked = lockfile::read(root)?;
-    let ids = if all {
-        tree.items.keys().cloned().collect()
+    let selection = if all {
+        Selection::All
     } else {
-        ids
+        Selection::Requirements(ids)
     };
-    emperor::accept(&tree, &mut locked, &ids)?;
-    lockfile::write(root, &locked)?;
+    let accepted = accept(&tree, &lockfile::read(root)?, &selection)?;
+    lockfile::write(root, &accepted)?;
     Ok(ExitCode::SUCCESS)
 }

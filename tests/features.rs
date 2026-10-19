@@ -19,6 +19,8 @@ struct ProjectWorld {
     stderr: String,
     /// The lockfile as it was right after the last Given step that accepted something.
     accepted_lockfile: Option<String>,
+    /// The lockfile as it was after each command run by a When step.
+    lockfile_after_runs: Vec<Option<String>>,
 }
 
 impl Default for ProjectWorld {
@@ -31,6 +33,7 @@ impl Default for ProjectWorld {
             stdout: String::new(),
             stderr: String::new(),
             accepted_lockfile: None,
+            lockfile_after_runs: Vec::new(),
         }
     }
 }
@@ -194,6 +197,13 @@ fn requirement_without_justifications(world: &mut ProjectWorld, uid: String) {
     world.add_item(&uid, ItemFixture::new(&uid));
 }
 
+#[given(expr = "the reference to {string} is removed from {string}")]
+fn reference_removed(world: &mut ProjectWorld, path: String, uid: String) {
+    world.update_item(&uid, |item| {
+        item.references.retain(|reference| *reference != path)
+    });
+}
+
 #[given(expr = "requirement {string} is inactive")]
 fn requirement_is_inactive(world: &mut ProjectWorld, uid: String) {
     world.update_item(&uid, |item| item.active = false);
@@ -243,6 +253,8 @@ fn justifications_accepted(world: &mut ProjectWorld, uid: String) {
 #[when(expr = "I run {string}")]
 fn run(world: &mut ProjectWorld, command: String) {
     world.run(&command);
+    let lockfile = world.lockfile();
+    world.lockfile_after_runs.push(lockfile);
 }
 
 // Outcomes
@@ -276,9 +288,60 @@ fn error_output_contains(world: &mut ProjectWorld, expected: String) {
     );
 }
 
+#[then(expr = "running {string} exits with {int}")]
+fn running_exits_with(world: &mut ProjectWorld, command: String, expected: i32) {
+    world.run(&command);
+    exit_code_is(world, expected);
+}
+
 #[then("the lockfile is unchanged")]
 fn lockfile_is_unchanged(world: &mut ProjectWorld) {
     assert_eq!(world.lockfile(), world.accepted_lockfile);
+}
+
+#[then("the lockfile is unchanged since the first accept")]
+fn lockfile_unchanged_since_first_run(world: &mut ProjectWorld) {
+    let first = world
+        .lockfile_after_runs
+        .first()
+        .expect("a command was run");
+    assert_eq!(world.lockfile().as_ref(), first.as_ref());
+}
+
+#[then("no lockfile exists")]
+fn no_lockfile_exists(world: &mut ProjectWorld) {
+    assert_eq!(world.lockfile(), None);
+}
+
+#[then(expr = "the lockfile contains an entry for {string}")]
+fn lockfile_contains_entry(world: &mut ProjectWorld, uid: String) {
+    assert!(
+        lockfile_section_line(world, &uid).is_some(),
+        "{:?}",
+        world.lockfile()
+    );
+}
+
+#[then(expr = "the lockfile does not contain an entry for {string}")]
+fn lockfile_lacks_entry(world: &mut ProjectWorld, uid: String) {
+    assert!(
+        lockfile_section_line(world, &uid).is_none(),
+        "{:?}",
+        world.lockfile()
+    );
+}
+
+#[then(expr = "{string} appears before {string} in the lockfile")]
+fn appears_before_in_lockfile(world: &mut ProjectWorld, first: String, second: String) {
+    let first = lockfile_section_line(world, &first).expect("first entry");
+    let second = lockfile_section_line(world, &second).expect("second entry");
+    assert!(first < second);
+}
+
+/// The line number of a requirement's section in the lockfile.
+fn lockfile_section_line(world: &ProjectWorld, uid: &str) -> Option<usize> {
+    let lockfile = world.lockfile().unwrap_or_default();
+    lockfile.lines().position(|line| line == format!("[{uid}]"))
 }
 
 fn main() {
