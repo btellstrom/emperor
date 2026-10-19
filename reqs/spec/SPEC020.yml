@@ -7,6 +7,6 @@ links:
 - NEED003: 3O4YQUyIcJOBVL5-IDSluIAB2FJ03o9Eg5HtxCqbl1o=
 normative: true
 ref: ''
-reviewed: Ey_g1tdyTlMpDiqOuIvN6ugfHxr8sVKZ1pL4tr4zads=
+reviewed: N68mL3WWHP7AXOZJTmXb2NYSb3pwOKrGuHfPJ5Gxoc8=
 text: |
   emperor shall load every item of every document in the Doorstop tree exactly once, skipping documents whose folder contains `.doorstop.skip` and folders marked with `.doorstop.skip-all`.
