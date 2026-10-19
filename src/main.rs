@@ -6,7 +6,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use emperor::accept::{Selection, accept};
 use emperor::check::{CheckOptions, check};
 use emperor::doorstop::Tree;
-use emperor::{locate, lockfile, report};
+use emperor::{evidence, locate, lockfile, report};
 
 /// `check` found problems.
 const EXIT_PROBLEMS: u8 = 1;
@@ -82,7 +82,8 @@ fn main() -> ExitCode {
 
 fn run_check(root: &Path, options: CheckOptions, format: Format) -> emperor::Result<ExitCode> {
     let tree = Tree::load(root)?;
-    let problems = check(&tree, &lockfile::read(root)?, &options)?;
+    let evidence = evidence::gather(&tree)?;
+    let problems = check(&tree, &evidence, &lockfile::read(root)?, &options)?;
     let report = match format {
         Format::Human => report::human(&problems),
         Format::Json => report::json(&problems),
@@ -105,7 +106,8 @@ fn run_accept(root: &Path, ids: Vec<String>, all: bool) -> emperor::Result<ExitC
     } else {
         Selection::Requirements(ids)
     };
-    let accepted = accept(&tree, &lockfile::read(root)?, &selection)?;
+    let evidence = evidence::gather(&tree)?;
+    let accepted = accept(&tree, &evidence, &lockfile::read(root)?, &selection)?;
     lockfile::write(root, &accepted)?;
     Ok(ExitCode::SUCCESS)
 }

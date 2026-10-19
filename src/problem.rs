@@ -6,7 +6,7 @@ use serde::Serialize;
 
 use crate::justification::Justification;
 
-#[derive(Debug, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum Problem {
     /// The justification changed since it was last accepted.
@@ -28,16 +28,49 @@ pub enum Problem {
     Unjustified { requirement: String },
     /// The lockfile has fingerprints for a requirement that no longer exists.
     RequirementRemoved { requirement: String },
+    /// A tag in code names a requirement that does not exist.
+    UnknownRequirement {
+        requirement: String,
+        location: Location,
+    },
+    /// A tag in code that emperor cannot use.
+    InvalidTag { location: Location, reason: String },
+}
+
+/// A line in a file of the project.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Location {
+    /// Relative to the project root, with `/` separators.
+    pub path: String,
+    pub line: usize,
+}
+
+impl fmt::Display for Location {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}", self.path, self.line)
+    }
 }
 
 impl Problem {
-    pub fn requirement(&self) -> &str {
+    /// The existing requirement the problem is about.
+    pub fn requirement(&self) -> Option<&str> {
         match self {
             Problem::Changed { requirement, .. }
             | Problem::Unaccepted { requirement, .. }
             | Problem::Missing { requirement, .. }
             | Problem::Unjustified { requirement }
-            | Problem::RequirementRemoved { requirement } => requirement,
+            | Problem::RequirementRemoved { requirement } => Some(requirement),
+            Problem::UnknownRequirement { .. } | Problem::InvalidTag { .. } => None,
+        }
+    }
+
+    /// Where in the code the problem is, for problems found in tags.
+    pub fn location(&self) -> Option<&Location> {
+        match self {
+            Problem::UnknownRequirement { location, .. } | Problem::InvalidTag { location, .. } => {
+                Some(location)
+            }
+            _ => None,
         }
     }
 
@@ -46,7 +79,7 @@ impl Problem {
             Problem::Changed { justification, .. }
             | Problem::Unaccepted { justification, .. }
             | Problem::Missing { justification, .. } => Some(justification),
-            Problem::Unjustified { .. } | Problem::RequirementRemoved { .. } => None,
+            _ => None,
         }
     }
 
@@ -62,6 +95,10 @@ impl Problem {
             Problem::Missing { justification, .. } => format!("{justification} not found"),
             Problem::Unjustified { .. } => "has no justifications".to_string(),
             Problem::RequirementRemoved { .. } => "requirement no longer exists".to_string(),
+            Problem::UnknownRequirement { requirement, .. } => {
+                format!("unknown requirement {requirement}")
+            }
+            Problem::InvalidTag { reason, .. } => reason.clone(),
         }
     }
 
@@ -78,7 +115,11 @@ impl Problem {
 
 impl fmt::Display for Problem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.requirement(), self.description())
+        match (self.requirement(), self.location()) {
+            (Some(requirement), _) => write!(f, "{requirement}: {}", self.description()),
+            (None, Some(location)) => write!(f, "{location}: {}", self.description()),
+            (None, None) => write!(f, "{}", self.description()),
+        }
     }
 }
 
@@ -101,6 +142,44 @@ mod tests {
             requirement: "REQ001".into(),
         };
         assert_eq!(removed.to_string(), "REQ001: requirement no longer exists");
+    }
+
+    fn location(path: &str, line: usize) -> Location {
+        Location {
+            path: path.into(),
+            line,
+        }
+    }
+
+    #[test]
+    fn tag_problems_are_described_by_their_location() {
+        let unknown = Problem::UnknownRequirement {
+            requirement: "REQ999".into(),
+            location: location("tests/login.rs", 2),
+        };
+        assert_eq!(
+            unknown.to_string(),
+            "tests/login.rs:2: unknown requirement REQ999"
+        );
+        let invalid = Problem::InvalidTag {
+            location: location("src/auth.rs", 1),
+            reason: "justifies is only supported on functions".into(),
+        };
+        assert_eq!(
+            invalid.to_string(),
+            "src/auth.rs:1: justifies is only supported on functions"
+        );
+    }
+
+    #[test]
+    fn tag_problems_are_about_no_existing_requirement() {
+        let unknown = Problem::UnknownRequirement {
+            requirement: "REQ999".into(),
+            location: location("tests/login.rs", 2),
+        };
+        assert_eq!(unknown.requirement(), None);
+        assert_eq!(unknown.location(), Some(&location("tests/login.rs", 2)));
+        assert!(!unknown.is_resolved_by_accepting());
     }
 
     #[test]

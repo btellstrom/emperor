@@ -336,6 +336,7 @@ dependencies = [
  "clap",
  "cucumber",
  "futures",
+ "ignore",
  "proc-macro2",
  "quote",
  "serde",
@@ -347,6 +348,10 @@ dependencies = [
  "thiserror",
  "toml",
 ]
+
+[[package]]
+name = "emperor-tags"
+version = "0.1.0"
 
 [[package]]
 name = "encode_unicode"

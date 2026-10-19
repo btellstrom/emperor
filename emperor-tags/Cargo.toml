@@ -1,0 +1,8 @@
+[package]
+name = "emperor-tags"
+version = "0.1.0"
+edition = "2024"
+description = "The #[justifies(...)] attribute that links Rust functions to requirements for emperor"
+
+[lib]
+proc-macro = true

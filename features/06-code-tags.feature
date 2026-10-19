@@ -10,7 +10,7 @@ Feature: Link Rust functions to requirements with the justifies attribute
     And requirement "REQ001" without justifications
     And requirement "REQ002" without justifications
 
-  @pending @justifies:SPEC024
+  @justifies:SPEC024
   Scenario: G1 A tagged function becomes a justification
     Given the file "tests/login.rs" contains:
       """
@@ -22,7 +22,7 @@ Feature: Link Rust functions to requirements with the justifies attribute
     Then the exit code is 1
     And the output contains "REQ001: rust-fn:tests/login.rs::rejects_bad_password has not been accepted"
 
-  @pending @justifies:SPEC024
+  @justifies:SPEC024
   Scenario: G2 A tagged function is tracked like any other justification
     Given the file "tests/login.rs" contains:
       """
@@ -36,7 +36,7 @@ Feature: Link Rust functions to requirements with the justifies attribute
     Then the exit code is 1
     And the output contains "REQ001: rust-fn:tests/login.rs::rejects_bad_password changed since it was accepted"
 
-  @pending @justifies:SPEC024
+  @justifies:SPEC024
   Scenario: G3 One attribute can justify several requirements
     Given the file "tests/login.rs" contains:
       """
@@ -48,7 +48,7 @@ Feature: Link Rust functions to requirements with the justifies attribute
     Then the output contains "REQ001: rust-fn:tests/login.rs::rejects_bad_password has not been accepted"
     And the output contains "REQ002: rust-fn:tests/login.rs::rejects_bad_password has not been accepted"
 
-  @pending @justifies:SPEC028
+  @justifies:SPEC028
   Scenario: G4 Adding a requirement to the attribute does not invalidate the others
     Given the file "tests/login.rs" contains:
       """
@@ -62,7 +62,7 @@ Feature: Link Rust functions to requirements with the justifies attribute
     Then the output does not contain "REQ001"
     And the output contains "REQ002: rust-fn:tests/login.rs::rejects_bad_password has not been accepted"
 
-  @pending @justifies:SPEC029
+  @justifies:SPEC029
   Scenario: G5 An attribute naming an unknown requirement fails
     Given the file "tests/login.rs" contains:
       """
@@ -74,7 +74,7 @@ Feature: Link Rust functions to requirements with the justifies attribute
     Then the exit code is 1
     And the output contains "tests/login.rs:2: unknown requirement REQ999"
 
-  @pending @justifies:SPEC024
+  @justifies:SPEC024
   Scenario: G6 The fully qualified attribute path is recognised
     Given the file "tests/login.rs" contains:
       """
@@ -85,7 +85,7 @@ Feature: Link Rust functions to requirements with the justifies attribute
     When I run "emperor check"
     Then the output contains "REQ001: rust-fn:tests/login.rs::rejects_bad_password has not been accepted"
 
-  @pending @justifies:SPEC014
+  @justifies:SPEC014
   Scenario: G7 A tagged function inside a module is addressed by its module path
     Given the file "src/auth.rs" contains:
       """
@@ -99,7 +99,7 @@ Feature: Link Rust functions to requirements with the justifies attribute
     When I run "emperor check"
     Then the output contains "REQ001: rust-fn:src/auth.rs::tests::hashes_password has not been accepted"
 
-  @pending @justifies:SPEC015
+  @justifies:SPEC015
   Scenario: G8 The attribute on something other than a function fails
     # Only functions are supported for now.
     Given the file "src/auth.rs" contains:
@@ -111,7 +111,7 @@ Feature: Link Rust functions to requirements with the justifies attribute
     Then the exit code is 1
     And the output contains "src/auth.rs:1: justifies is only supported on functions"
 
-  @pending @justifies:SPEC024
+  @justifies:SPEC024
   Scenario: G9 A function both tagged and listed in justified_by is reported once
     Given the file "tests/login.rs" contains:
       """
@@ -123,7 +123,7 @@ Feature: Link Rust functions to requirements with the justifies attribute
     When I run "emperor check"
     Then the output contains "REQ001: rust-fn:tests/login.rs::rejects_bad_password has not been accepted" exactly once
 
-  @pending @justifies:SPEC030
+  @justifies:SPEC030
   Scenario: G10 Ignored files are not scanned
     Given the file ".gitignore" contains:
       """

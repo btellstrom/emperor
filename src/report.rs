@@ -21,7 +21,7 @@ pub fn human(problems: &[Problem]) -> String {
 }
 
 fn summary(problems: &[Problem]) -> String {
-    let requirements: BTreeSet<&str> = problems.iter().map(Problem::requirement).collect();
+    let requirements: BTreeSet<&str> = problems.iter().filter_map(Problem::requirement).collect();
     let mut summary = format!(
         "{} in {}.",
         counted(problems.len(), "problem"),
@@ -30,7 +30,7 @@ fn summary(problems: &[Problem]) -> String {
     let acceptable: BTreeSet<&str> = problems
         .iter()
         .filter(|problem| problem.is_resolved_by_accepting())
-        .map(Problem::requirement)
+        .filter_map(Problem::requirement)
         .collect();
     if !acceptable.is_empty() {
         let ids: Vec<&str> = acceptable.into_iter().collect();
@@ -65,13 +65,18 @@ pub fn github(problems: &[Problem], line_of: impl Fn(&Justification) -> Option<u
 
 fn annotation(problem: &Problem, line_of: &impl Fn(&Justification) -> Option<usize>) -> String {
     let mut properties = Vec::new();
-    if let Some(justification) = problem.justification() {
+    if let Some(location) = problem.location() {
+        properties.push(format!("file={}", escape_property(&location.path)));
+        properties.push(format!("line={}", location.line));
+    } else if let Some(justification) = problem.justification() {
         properties.push(format!("file={}", escape_property(justification.path())));
         if let Some(line) = line_of(justification) {
             properties.push(format!("line={line}"));
         }
     }
-    properties.push(format!("title={}", escape_property(problem.requirement())));
+    if let Some(requirement) = problem.requirement() {
+        properties.push(format!("title={}", escape_property(requirement)));
+    }
     format!(
         "::error {}::{}\n",
         properties.join(","),

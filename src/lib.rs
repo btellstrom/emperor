@@ -2,6 +2,7 @@ pub mod accept;
 pub mod check;
 pub mod doorstop;
 pub mod error;
+pub mod evidence;
 pub mod fingerprint;
 pub mod justification;
 pub mod locate;

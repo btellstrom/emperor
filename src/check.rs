@@ -2,8 +2,9 @@
 
 use crate::doorstop::Tree;
 use crate::error::Result;
+use crate::evidence::Evidence;
 use crate::fingerprint;
-use crate::justification::{self, Justification};
+use crate::justification::Justification;
 use crate::lockfile::Fingerprints;
 pub use crate::problem::Problem;
 
@@ -13,21 +14,32 @@ pub struct CheckOptions {
     pub require_justification: bool,
 }
 
-/// Every problem in the tree, in requirement order.
-pub fn check(tree: &Tree, locked: &Fingerprints, options: &CheckOptions) -> Result<Vec<Problem>> {
+/// Every problem in the tree, in requirement order, followed by problems with tags.
+pub fn check(
+    tree: &Tree,
+    evidence: &Evidence,
+    locked: &Fingerprints,
+    options: &CheckOptions,
+) -> Result<Vec<Problem>> {
     let mut problems = Vec::new();
     for item in tree.items.values().filter(|item| item.active) {
-        let justifications = justification::of_item(item)?;
+        let justifications: Vec<&Justification> = evidence.of(&item.uid).collect();
         if justifications.is_empty() && options.require_justification {
             problems.push(Problem::Unjustified {
                 requirement: item.uid.clone(),
             });
         }
         for justification in justifications {
-            problems.extend(check_justification(tree, locked, &item.uid, justification)?);
+            problems.extend(check_justification(
+                tree,
+                locked,
+                &item.uid,
+                justification.clone(),
+            )?);
         }
     }
     problems.extend(removed_requirements(tree, locked));
+    problems.extend(evidence.problems.iter().cloned());
     Ok(problems)
 }
 
@@ -77,17 +89,24 @@ mod tests {
     use std::fs;
 
     use super::*;
+    use crate::evidence;
     use crate::test_support::{Project, file, locked};
 
+    fn check_with(project: &Project, locked: &Fingerprints, options: CheckOptions) -> Vec<Problem> {
+        let tree = project.tree();
+        let evidence = evidence::gather(&tree).unwrap();
+        check(&tree, &evidence, locked, &options).unwrap()
+    }
+
     fn check_project(project: &Project, locked: &Fingerprints) -> Vec<Problem> {
-        check(&project.tree(), locked, &CheckOptions::default()).unwrap()
+        check_with(project, locked, CheckOptions::default())
     }
 
     fn requiring_justification(project: &Project) -> Vec<Problem> {
         let options = CheckOptions {
             require_justification: true,
         };
-        check(&project.tree(), &Fingerprints::new(), &options).unwrap()
+        check_with(project, &Fingerprints::new(), options)
     }
 
     #[test]
@@ -185,6 +204,35 @@ mod tests {
             .inactive("REQ001");
         let locked = locked(&[("REQ001", "file:a.rs", "sha256:old")]);
         assert_eq!(check_project(&project, &locked), vec![]);
+    }
+
+    #[test]
+    fn a_tagged_function_is_checked() {
+        let project = Project::new()
+            .requirement("REQ001", &[])
+            .file("lib.rs", "#[justifies(\"REQ001\")]\nfn login() {}\n");
+        assert_eq!(
+            check_project(&project, &Fingerprints::new()),
+            vec![Problem::Unaccepted {
+                requirement: "REQ001".into(),
+                justification: Justification::RustFn {
+                    path: "lib.rs".into(),
+                    item: "login".into()
+                }
+            }]
+        );
+    }
+
+    #[test]
+    fn problems_with_tags_are_reported() {
+        let project = Project::new()
+            .requirement("REQ001", &[])
+            .file("lib.rs", "#[justifies(\"REQ999\")]\nfn login() {}\n");
+        let problems = check_project(&project, &Fingerprints::new());
+        assert!(matches!(
+            &problems[..],
+            [Problem::UnknownRequirement { .. }]
+        ));
     }
 
     #[test]

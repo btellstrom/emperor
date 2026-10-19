@@ -2,10 +2,10 @@
 
 use std::collections::BTreeMap;
 
-use crate::doorstop::{Item, Tree};
+use crate::doorstop::Tree;
 use crate::error::{Error, Result};
+use crate::evidence::Evidence;
 use crate::fingerprint;
-use crate::justification;
 use crate::lockfile::Fingerprints;
 
 /// Which requirements to accept.
@@ -19,12 +19,18 @@ pub enum Selection {
 /// The lockfile contents after accepting the selected requirements.
 ///
 /// Either every selected requirement is accepted or, on error, nothing is.
-pub fn accept(tree: &Tree, locked: &Fingerprints, selection: &Selection) -> Result<Fingerprints> {
+pub fn accept(
+    tree: &Tree,
+    evidence: &Evidence,
+    locked: &Fingerprints,
+    selection: &Selection,
+) -> Result<Fingerprints> {
     let mut accepted = locked.clone();
     for uid in selected_requirements(tree, locked, selection)? {
-        let fingerprints = match tree.items.get(&uid) {
-            Some(item) => fingerprints_of(tree, item)?,
-            None => BTreeMap::new(),
+        let fingerprints = if tree.items.contains_key(&uid) {
+            fingerprints_of(tree, evidence, &uid)?
+        } else {
+            BTreeMap::new()
         };
         if fingerprints.is_empty() {
             accepted.remove(&uid);
@@ -62,13 +68,17 @@ fn selected_requirements(
     }
 }
 
-fn fingerprints_of(tree: &Tree, item: &Item) -> Result<BTreeMap<String, String>> {
+fn fingerprints_of(
+    tree: &Tree,
+    evidence: &Evidence,
+    uid: &str,
+) -> Result<BTreeMap<String, String>> {
     let mut fingerprints = BTreeMap::new();
-    for justification in justification::of_item(item)? {
-        let Some(fingerprint) = fingerprint::of(&tree.root, &justification)? else {
+    for justification in evidence.of(uid) {
+        let Some(fingerprint) = fingerprint::of(&tree.root, justification)? else {
             return Err(Error::JustificationNotFound {
-                requirement: item.uid.clone(),
-                justification,
+                requirement: uid.to_string(),
+                justification: justification.clone(),
             });
         };
         fingerprints.insert(justification.key(), fingerprint);
@@ -81,7 +91,18 @@ mod tests {
     use std::fs;
 
     use super::*;
+    use crate::evidence;
     use crate::test_support::{Project, locked};
+
+    fn accept_project(
+        project: &Project,
+        before: &Fingerprints,
+        selection: &Selection,
+    ) -> Result<Fingerprints> {
+        let tree = project.tree();
+        let evidence = evidence::gather(&tree).unwrap();
+        accept(&tree, &evidence, before, selection)
+    }
 
     fn requirements(uids: &[&str]) -> Selection {
         Selection::Requirements(uids.iter().map(|uid| uid.to_string()).collect())
@@ -90,16 +111,22 @@ mod tests {
     #[test]
     fn records_the_current_fingerprints_of_a_requirement() {
         let project = Project::new().requirement("REQ001", &["a.rs"]);
-        let accepted = accept(
-            &project.tree(),
-            &Fingerprints::new(),
-            &requirements(&["REQ001"]),
-        )
-        .unwrap();
+        let accepted =
+            accept_project(&project, &Fingerprints::new(), &requirements(&["REQ001"])).unwrap();
         assert_eq!(
             accepted,
             locked(&[("REQ001", "file:a.rs", &project.fingerprint_of("a.rs"))])
         );
+    }
+
+    #[test]
+    fn records_tagged_functions() {
+        let project = Project::new()
+            .requirement("REQ001", &[])
+            .file("lib.rs", "#[justifies(\"REQ001\")]\nfn login() {}\n");
+        let accepted =
+            accept_project(&project, &Fingerprints::new(), &requirements(&["REQ001"])).unwrap();
+        assert!(accepted["REQ001"].contains_key("rust-fn:lib.rs::login"));
     }
 
     #[test]
@@ -108,7 +135,7 @@ mod tests {
             .requirement("REQ001", &["a.rs"])
             .requirement("REQ002", &["b.rs"]);
         let before = locked(&[("REQ002", "file:b.rs", "sha256:old")]);
-        let accepted = accept(&project.tree(), &before, &requirements(&["REQ001"])).unwrap();
+        let accepted = accept_project(&project, &before, &requirements(&["REQ001"])).unwrap();
         assert_eq!(accepted["REQ002"], before["REQ002"]);
     }
 
@@ -116,33 +143,30 @@ mod tests {
     fn forgets_justifications_the_requirement_no_longer_names() {
         let project = Project::new().requirement("REQ001", &["a.rs"]);
         let before = locked(&[("REQ001", "file:gone.rs", "sha256:old")]);
-        let accepted = accept(&project.tree(), &before, &requirements(&["REQ001"])).unwrap();
+        let accepted = accept_project(&project, &before, &requirements(&["REQ001"])).unwrap();
         assert!(!accepted["REQ001"].contains_key("file:gone.rs"));
     }
 
     #[test]
     fn a_requirement_without_justifications_has_no_entry() {
         let project = Project::new().requirement("REQ001", &[]);
-        let accepted = accept(
-            &project.tree(),
-            &Fingerprints::new(),
-            &requirements(&["REQ001"]),
-        )
-        .unwrap();
+        let accepted =
+            accept_project(&project, &Fingerprints::new(), &requirements(&["REQ001"])).unwrap();
         assert_eq!(accepted, Fingerprints::new());
     }
 
     #[test]
     fn accepting_a_removed_requirement_forgets_it() {
         let before = locked(&[("REQ001", "file:a.rs", "sha256:old")]);
-        let accepted = accept(&Project::new().tree(), &before, &requirements(&["REQ001"])).unwrap();
+        let accepted =
+            accept_project(&Project::new(), &before, &requirements(&["REQ001"])).unwrap();
         assert_eq!(accepted, Fingerprints::new());
     }
 
     #[test]
     fn accepting_an_unknown_requirement_is_an_error() {
-        let error = accept(
-            &Project::new().tree(),
+        let error = accept_project(
+            &Project::new(),
             &Fingerprints::new(),
             &requirements(&["REQ999"]),
         )
@@ -154,12 +178,8 @@ mod tests {
     fn a_missing_justification_is_an_error() {
         let project = Project::new().requirement("REQ001", &["a.rs"]);
         fs::remove_file(project.path("a.rs")).unwrap();
-        let error = accept(
-            &project.tree(),
-            &Fingerprints::new(),
-            &requirements(&["REQ001"]),
-        )
-        .unwrap_err();
+        let error =
+            accept_project(&project, &Fingerprints::new(), &requirements(&["REQ001"])).unwrap_err();
         assert!(matches!(error, Error::JustificationNotFound { .. }));
     }
 
@@ -169,7 +189,7 @@ mod tests {
             .requirement("REQ001", &["a.rs"])
             .requirement("REQ002", &["b.rs"]);
         let before = locked(&[("REQ009", "file:gone.rs", "sha256:old")]);
-        let accepted = accept(&project.tree(), &before, &Selection::All).unwrap();
+        let accepted = accept_project(&project, &before, &Selection::All).unwrap();
         assert_eq!(accepted.keys().collect::<Vec<_>>(), ["REQ001", "REQ002"]);
     }
 
@@ -179,7 +199,7 @@ mod tests {
             .requirement("REQ001", &["a.rs"])
             .inactive("REQ001");
         let before = locked(&[("REQ001", "file:a.rs", "sha256:old")]);
-        let accepted = accept(&project.tree(), &before, &Selection::All).unwrap();
+        let accepted = accept_project(&project, &before, &Selection::All).unwrap();
         assert_eq!(accepted, before);
     }
 }

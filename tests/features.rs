@@ -273,6 +273,22 @@ fn requirement_justified_by(
     world.add_item(&uid, fixture);
 }
 
+#[given(expr = "requirement {string} is also justified by Rust function {string} in {string}")]
+fn requirement_also_justified_by(
+    world: &mut ProjectWorld,
+    uid: String,
+    function: String,
+    path: String,
+) {
+    world.update_item(&uid, |item| {
+        item.justified_by.push(JustifiedBy {
+            kind: "rust-fn".to_string(),
+            item: function,
+            path,
+        })
+    });
+}
+
 #[given(expr = "requirement {string} without justifications")]
 fn requirement_without_justifications(world: &mut ProjectWorld, uid: String) {
     world.add_item(&uid, ItemFixture::new(&uid));
@@ -445,6 +461,15 @@ fn output_contains_once(world: &mut ProjectWorld, expected: String) {
         world.stdout.matches(&expected).count(),
         1,
         "{:?}",
+        world.stdout
+    );
+}
+
+#[then(expr = "the output does not contain {string}")]
+fn output_lacks(world: &mut ProjectWorld, unexpected: String) {
+    assert!(
+        !world.stdout.contains(&unexpected),
+        "expected output not to contain {unexpected:?}, got {:?}",
         world.stdout
     );
 }

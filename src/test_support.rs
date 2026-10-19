@@ -43,6 +43,24 @@ impl Project {
         self
     }
 
+    /// Writes a file into the project, creating its folder.
+    pub fn file(self, path: &str, contents: &str) -> Project {
+        let path = self.path(path);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, contents).unwrap();
+        self
+    }
+
+    /// Adds a `justified_by` entry naming a Rust function to an existing requirement.
+    pub fn justify_by_rust_fn(&mut self, uid: &str, path: &str, function: &str) {
+        let reference = Reference::new("rust-fn", path, Some(function));
+        self.items
+            .get_mut(uid)
+            .unwrap()
+            .justified_by
+            .push(reference);
+    }
+
     pub fn inactive(mut self, uid: &str) -> Project {
         self.items.get_mut(uid).unwrap().active = false;
         self
