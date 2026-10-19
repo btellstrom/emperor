@@ -16,6 +16,8 @@ pub enum Error {
     MarkdownItems { prefix: String },
     #[error("{prefix}: unknown item format {format}")]
     UnknownItemFormat { prefix: String, format: String },
+    #[error("requirement {0} is defined more than once")]
+    DuplicateRequirement(String),
     #[error("unknown requirement {0}")]
     UnknownRequirement(String),
     #[error("{requirement}: {justification} not found")]

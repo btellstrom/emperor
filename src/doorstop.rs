@@ -7,6 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
+use serde::de::DeserializeOwned;
 
 use crate::error::{Error, Result, read_to_string};
 
@@ -52,7 +53,6 @@ pub struct Reference {
     pub path: String,
     #[serde(rename = "type")]
     pub kind: String,
-    pub keyword: Option<String>,
 }
 
 #[cfg(test)]
@@ -61,7 +61,6 @@ impl Reference {
         Reference {
             path: path.to_string(),
             kind: "file".to_string(),
-            keyword: None,
         }
     }
 }
@@ -101,11 +100,7 @@ impl Tree {
 
         let mut items = BTreeMap::new();
         for document in &documents {
-            let mut document_items = Vec::new();
-            load_items(document, &document.dir, &mut document_items)?;
-            for item in document_items {
-                items.insert(item.uid.clone(), item);
-            }
+            load_items(document, &document.dir, &mut items)?;
         }
 
         Ok(Tree {
@@ -130,8 +125,7 @@ fn find_documents(dir: &Path, documents: &mut Vec<Document>) -> Result<()> {
 }
 
 fn load_document(dir: &Path, config: &Path) -> Result<Document> {
-    let file: DocumentFile =
-        serde_yaml_ng::from_str(&read_to_string(config)?).map_err(Error::parse(config))?;
+    let file: DocumentFile = read_yaml(config)?;
     let prefix = file.settings.prefix;
     // Items in any other format would be skipped, so a check would pass without checking them.
     match file.settings.itemformat.as_deref() {
@@ -170,22 +164,25 @@ fn entries(dir: &Path) -> Result<Vec<PathBuf>> {
 }
 
 /// The items in a document's folder and its subfolders, except those of embedded documents.
-fn load_items(document: &Document, dir: &Path, items: &mut Vec<Item>) -> Result<()> {
+fn load_items(document: &Document, dir: &Path, items: &mut BTreeMap<String, Item>) -> Result<()> {
     for path in entries(dir)? {
         if path.is_dir() {
             if !path.join(DOCUMENT_FILE).exists() {
                 load_items(document, &path, items)?;
             }
         } else if document.is_item_file(&path) {
-            items.push(load_item(&path)?);
+            let item = load_item(&path)?;
+            if items.contains_key(&item.uid) {
+                return Err(Error::DuplicateRequirement(item.uid));
+            }
+            items.insert(item.uid.clone(), item);
         }
     }
     Ok(())
 }
 
 fn load_item(path: &Path) -> Result<Item> {
-    let file: ItemFile =
-        serde_yaml_ng::from_str(&read_to_string(path)?).map_err(Error::parse(path))?;
+    let file: ItemFile = read_yaml(path)?;
     let uid = path
         .file_stem()
         .expect("item file has a name")
@@ -196,6 +193,10 @@ fn load_item(path: &Path) -> Result<Item> {
         active: file.active,
         references: file.references.unwrap_or_default(),
     })
+}
+
+fn read_yaml<T: DeserializeOwned>(path: &Path) -> Result<T> {
+    serde_yaml_ng::from_str(&read_to_string(path)?).map_err(Error::parse(path))
 }
 
 #[cfg(test)]
@@ -307,6 +308,16 @@ mod tests {
             .document("reqs/low", "LLR")
             .item("reqs/low/LLR001.yml");
         assert_eq!(layout.uids(), ["LLR001", "REQ001"]);
+    }
+
+    #[test]
+    fn the_same_uid_in_two_places_is_an_error() {
+        let layout = Layout::new()
+            .document("reqs", "REQ")
+            .item("reqs/REQ001.yml")
+            .item("reqs/old/REQ001.yml");
+        let error = Tree::load(layout.0.path()).unwrap_err();
+        assert!(matches!(error, Error::DuplicateRequirement(uid) if uid == "REQ001"));
     }
 
     #[test]

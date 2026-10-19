@@ -108,6 +108,10 @@ impl ProjectWorld {
         );
         let args: Vec<&str> = words.collect();
         let output = self.emperor(&args);
+        self.record(output);
+    }
+
+    fn record(&mut self, output: std::process::Output) {
         self.exit_code = output.status.code();
         self.stdout = String::from_utf8_lossy(&output.stdout).into_owned();
         self.stderr = String::from_utf8_lossy(&output.stderr).into_owned();
@@ -299,9 +303,7 @@ fn run_from_another_folder(world: &mut ProjectWorld, command: String) {
         .current_dir(elsewhere.path())
         .output()
         .expect("run emperor");
-    world.exit_code = output.status.code();
-    world.stdout = String::from_utf8_lossy(&output.stdout).into_owned();
-    world.stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    world.record(output);
 }
 
 #[when(expr = "I run {string}")]
