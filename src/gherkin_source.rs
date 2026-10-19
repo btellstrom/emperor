@@ -1,5 +1,7 @@
 //! Finds `@justifies:<ID>` tags in Gherkin and fingerprints scenarios by their steps.
 
+use std::fmt::Write;
+
 use gherkin::{Feature, GherkinEnv, Rule, Scenario, Step, Table};
 
 use crate::fingerprint::sha256;
@@ -131,16 +133,16 @@ fn is_tag_or_comment(line: &str) -> bool {
 /// A step as text, ignoring whitespace inside it but not its doc string or table.
 fn write_step(step: &Step, text: &mut String) {
     let value: Vec<&str> = step.value.split_whitespace().collect();
-    text.push_str(&format!("{} {}\n", step.keyword.trim(), value.join(" ")));
+    writeln!(text, "{} {}", step.keyword.trim(), value.join(" ")).expect("writing to a String");
     if let Some(docstring) = &step.docstring {
-        text.push_str(&format!("\"\"\"\n{docstring}\n\"\"\"\n"));
+        writeln!(text, "\"\"\"\n{docstring}\n\"\"\"").expect("writing to a String");
     }
     step.table.iter().for_each(|table| write_table(table, text));
 }
 
 fn write_table(table: &Table, text: &mut String) {
     for row in &table.rows {
-        text.push_str(&format!("|{}|\n", row.join("|")));
+        writeln!(text, "|{}|", row.join("|")).expect("writing to a String");
     }
 }
 

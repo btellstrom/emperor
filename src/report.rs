@@ -1,6 +1,7 @@
 //! Renders the problems `check` found for people and for CI systems.
 
 use std::collections::BTreeSet;
+use std::fmt::Write;
 
 use crate::justification::Justification;
 use crate::problem::Problem;
@@ -24,10 +25,12 @@ fn summary(problems: &[Problem]) -> String {
     let requirements: BTreeSet<&str> = problems.iter().filter_map(Problem::requirement).collect();
     let mut summary = counted(problems.len(), "problem");
     if !requirements.is_empty() {
-        summary.push_str(&format!(
+        write!(
+            summary,
             " in {}",
             counted(requirements.len(), "requirement")
-        ));
+        )
+        .expect("writing to a String");
     }
     summary.push('.');
     let acceptable: BTreeSet<&str> = problems
@@ -37,10 +40,12 @@ fn summary(problems: &[Problem]) -> String {
         .collect();
     if !acceptable.is_empty() {
         let ids: Vec<&str> = acceptable.into_iter().collect();
-        summary.push_str(&format!(
+        write!(
+            summary,
             " Review the changes, then run `emperor accept {}`.",
             ids.join(" ")
-        ));
+        )
+        .expect("writing to a String");
     }
     summary
 }

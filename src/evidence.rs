@@ -108,6 +108,12 @@ pub fn gather(tree: &Tree) -> Result<Evidence> {
             evidence.add(&item.uid, justification);
         }
     }
+    gather_rust_tags(tree, &mut evidence)?;
+    gather_scenario_tags(tree, &mut evidence)?;
+    Ok(evidence)
+}
+
+fn gather_rust_tags(tree: &Tree, evidence: &mut Evidence) -> Result<()> {
     for path in project_files(&tree.root, "rs")? {
         let source = read_to_string(&path)?;
         // Files that cannot contain a tag are not parsed, so broken test fixtures are no error.
@@ -120,6 +126,10 @@ pub fn gather(tree: &Tree) -> Result<Evidence> {
             evidence.add_tag(tree, &relative, tag);
         }
     }
+    Ok(())
+}
+
+fn gather_scenario_tags(tree: &Tree, evidence: &mut Evidence) -> Result<()> {
     for path in project_files(&tree.root, "feature")? {
         let source = read_to_string(&path)?;
         let feature = gherkin_source::parse(&source).map_err(Error::parse(&path))?;
@@ -131,7 +141,7 @@ pub fn gather(tree: &Tree) -> Result<Evidence> {
             evidence.add_scenario_tag(tree, &relative, tag);
         }
     }
-    Ok(evidence)
+    Ok(())
 }
 
 /// The files with an extension in the project, except those git ignores, in path order.

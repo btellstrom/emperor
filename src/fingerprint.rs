@@ -19,22 +19,30 @@ pub fn of(root: &Path, justification: &Justification) -> Result<Option<String>> 
         }
         Justification::RustFn { path, item } => {
             let path = root.join(path);
-            let Some(contents) = read_if_present(&path)? else {
+            let Some(source) = read_source(&path)? else {
                 return Ok(None);
             };
-            let source = String::from_utf8(contents).map_err(Error::parse(&path))?;
             rust_source::fingerprint_function(&source, item).map_err(Error::parse(&path))
         }
         Justification::Gherkin { path, scenario } => {
             let path = root.join(path);
-            let Some(contents) = read_if_present(&path)? else {
+            let Some(source) = read_source(&path)? else {
                 return Ok(None);
             };
-            let source = String::from_utf8(contents).map_err(Error::parse(&path))?;
             let feature = gherkin_source::parse(&source).map_err(Error::parse(&path))?;
             Ok(gherkin_source::fingerprint_scenario(&feature, scenario))
         }
     }
+}
+
+/// The text of a source file, or `None` when it does not exist.
+fn read_source(path: &Path) -> Result<Option<String>> {
+    let Some(contents) = read_if_present(path)? else {
+        return Ok(None);
+    };
+    String::from_utf8(contents)
+        .map(Some)
+        .map_err(Error::parse(path))
 }
 
 fn read_if_present(path: &Path) -> Result<Option<Vec<u8>>> {

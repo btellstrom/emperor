@@ -30,12 +30,7 @@ pub fn check(
             });
         }
         for justification in &justifications {
-            problems.extend(check_justification(
-                tree,
-                locked,
-                &item.uid,
-                (*justification).clone(),
-            )?);
+            problems.extend(check_justification(tree, locked, &item.uid, justification)?);
         }
         problems.extend(dropped_justifications(locked, &item.uid, &justifications)?);
     }
@@ -48,18 +43,19 @@ fn check_justification(
     tree: &Tree,
     locked: &Fingerprints,
     uid: &str,
-    justification: Justification,
+    justification: &Justification,
 ) -> Result<Option<Problem>> {
     let requirement = uid.to_string();
-    let Some(current) = fingerprint::of(&tree.root, &justification)? else {
+    let Some(current) = fingerprint::of(&tree.root, justification)? else {
         return Ok(Some(Problem::Missing {
             requirement,
-            justification,
+            justification: justification.clone(),
         }));
     };
     let accepted = locked
         .get(uid)
         .and_then(|fingerprints| fingerprints.get(&justification.key()));
+    let justification = justification.clone();
     Ok(match accepted {
         None => Some(Problem::Unaccepted {
             requirement,
