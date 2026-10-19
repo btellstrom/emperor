@@ -9,7 +9,8 @@ use std::path::{Path, PathBuf};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
-use crate::error::{Error, Result, read_to_string};
+use crate::error::{Error, Result};
+use crate::files::read_to_string;
 
 const DOCUMENT_FILE: &str = ".doorstop.yml";
 /// Skips the document in the folder that contains it.

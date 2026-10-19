@@ -54,7 +54,3 @@ impl Error {
         }
     }
 }
-
-pub fn read_to_string(path: &Path) -> Result<String> {
-    std::fs::read_to_string(path).map_err(Error::io(path))
-}

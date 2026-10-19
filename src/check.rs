@@ -3,6 +3,7 @@
 use crate::doorstop::Tree;
 use crate::error::{Error, Result};
 use crate::evidence::Evidence;
+use crate::files::read_source;
 use crate::fingerprint;
 use crate::justification::Justification;
 use crate::lockfile::Fingerprints;
@@ -27,24 +28,36 @@ pub fn check(
 ) -> Result<Vec<Problem>> {
     let mut problems = Vec::new();
     for item in tree.items.values().filter(|item| item.active) {
-        let justifications: Vec<&Justification> = evidence.of(&item.uid).collect();
-        if justifications.is_empty() && options.require_justification {
-            problems.push(Problem::Unjustified {
-                requirement: item.uid.clone(),
-            });
-        }
-        for justification in &justifications {
-            problems.extend(check_justification(tree, locked, &item.uid, justification)?);
-        }
-        problems.extend(dropped_justifications(locked, &item.uid, &justifications)?);
-        if let Some(results) = &options.test_results {
-            for justification in &justifications {
-                problems.extend(check_test_outcome(tree, results, &item.uid, justification)?);
-            }
-        }
+        problems.extend(check_requirement(
+            tree, evidence, locked, options, &item.uid,
+        )?);
     }
     problems.extend(removed_requirements(tree, locked));
     problems.extend(evidence.problems.iter().cloned());
+    Ok(problems)
+}
+
+fn check_requirement(
+    tree: &Tree,
+    evidence: &Evidence,
+    locked: &Fingerprints,
+    options: &CheckOptions,
+    uid: &str,
+) -> Result<Vec<Problem>> {
+    let justifications: Vec<&Justification> = evidence.of(uid).collect();
+    let mut problems = Vec::new();
+    if justifications.is_empty() && options.require_justification {
+        problems.push(Problem::Unjustified {
+            requirement: uid.to_string(),
+        });
+    }
+    for justification in &justifications {
+        problems.extend(check_justification(tree, locked, uid, justification)?);
+        if let Some(results) = &options.test_results {
+            problems.extend(check_test_outcome(tree, results, uid, justification)?);
+        }
+    }
+    problems.extend(dropped_justifications(locked, uid, &justifications)?);
     Ok(problems)
 }
 
@@ -89,7 +102,7 @@ fn check_test_outcome(
         return Ok(None);
     };
     let path = tree.root.join(path);
-    let Ok(source) = std::fs::read_to_string(&path) else {
+    let Some(source) = read_source(&path)? else {
         return Ok(None); // Reported as missing already.
     };
     if !rust_source::is_test_function(&source, item).map_err(Error::parse(&path))? {

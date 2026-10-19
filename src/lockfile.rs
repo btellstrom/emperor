@@ -5,7 +5,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-use crate::error::{Error, Result, read_to_string};
+use crate::error::{Error, Result};
+use crate::files::read_to_string;
 
 pub const LOCKFILE_NAME: &str = "emperor.lock";
 

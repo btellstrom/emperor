@@ -72,13 +72,12 @@ fn main() -> ExitCode {
             require_justification,
             test_results,
             format,
-        } => read_test_results(test_results.as_deref()).and_then(|test_results| {
-            let options = CheckOptions {
-                require_justification,
-                test_results,
-            };
-            run_check(&cli.root, options, format)
-        }),
+        } => run_check(
+            &cli.root,
+            require_justification,
+            test_results.as_deref(),
+            format,
+        ),
         Command::Accept { ids, all } => run_accept(&cli.root, ids, all),
     };
     result.unwrap_or_else(|error| {
@@ -105,7 +104,16 @@ fn load_project(root: &Path) -> emperor::Result<(Tree, Evidence, Fingerprints)> 
     Ok((tree, evidence, locked))
 }
 
-fn run_check(root: &Path, options: CheckOptions, format: Format) -> emperor::Result<ExitCode> {
+fn run_check(
+    root: &Path,
+    require_justification: bool,
+    test_results: Option<&Path>,
+    format: Format,
+) -> emperor::Result<ExitCode> {
+    let options = CheckOptions {
+        require_justification,
+        test_results: read_test_results(test_results)?,
+    };
     let (tree, evidence, locked) = load_project(root)?;
     let problems = check(&tree, &evidence, &locked, &options)?;
     let report = match format {

@@ -8,7 +8,8 @@ use std::path::{Path, PathBuf};
 use ignore::WalkBuilder;
 
 use crate::doorstop::Tree;
-use crate::error::{Error, Result, read_to_string};
+use crate::error::{Error, Result};
+use crate::files::read_to_string;
 use crate::gherkin_source::{self, ScenarioTag};
 use crate::justification::{self, Justification};
 use crate::problem::{Location, Problem};

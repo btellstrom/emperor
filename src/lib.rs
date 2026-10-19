@@ -3,6 +3,7 @@ pub mod check;
 pub mod doorstop;
 pub mod error;
 pub mod evidence;
+mod files;
 pub mod fingerprint;
 pub mod gherkin_source;
 pub mod justification;
