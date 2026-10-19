@@ -424,6 +424,21 @@ fn output_contains(world: &mut ProjectWorld, expected: String) {
     );
 }
 
+#[then("the output is:")]
+fn output_is(world: &mut ProjectWorld, step: &Step) {
+    let expected = step.docstring.as_ref().expect("the step has a doc string");
+    assert_eq!(world.stdout.trim_end(), expected.trim());
+}
+
+#[then("the output is JSON equal to:")]
+fn output_is_json(world: &mut ProjectWorld, step: &Step) {
+    let expected = step.docstring.as_ref().expect("the step has a doc string");
+    let expected: serde_json::Value = serde_json::from_str(expected).expect("expected JSON");
+    let actual: serde_json::Value = serde_json::from_str(&world.stdout)
+        .unwrap_or_else(|error| panic!("{error}: {:?}", world.stdout));
+    assert_eq!(actual, expected);
+}
+
 #[then(expr = "the output contains {string} exactly once")]
 fn output_contains_once(world: &mut ProjectWorld, expected: String) {
     assert_eq!(

@@ -4,7 +4,9 @@ pub mod doorstop;
 pub mod error;
 pub mod fingerprint;
 pub mod justification;
+pub mod locate;
 pub mod lockfile;
+pub mod report;
 pub mod rust_source;
 #[cfg(test)]
 mod test_support;

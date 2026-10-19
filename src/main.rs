@@ -1,12 +1,12 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 use emperor::accept::{Selection, accept};
 use emperor::check::{CheckOptions, check};
 use emperor::doorstop::Tree;
-use emperor::lockfile;
+use emperor::{locate, lockfile, report};
 
 /// `check` found problems.
 const EXIT_PROBLEMS: u8 = 1;
@@ -27,6 +27,16 @@ struct Cli {
     command: Command,
 }
 
+#[derive(Clone, Copy, ValueEnum)]
+enum Format {
+    /// One line per problem and a summary.
+    Human,
+    /// A JSON document.
+    Json,
+    /// GitHub Actions error annotations.
+    Github,
+}
+
 #[derive(Subcommand)]
 enum Command {
     /// Fail if any justification changed since it was accepted.
@@ -34,6 +44,9 @@ enum Command {
         /// Also fail for active requirements that have no justifications.
         #[arg(long)]
         require_justification: bool,
+        /// How to report problems.
+        #[arg(long, value_enum, default_value_t = Format::Human)]
+        format: Format,
     },
     /// Record the current justifications of requirements as reviewed.
     Accept {
@@ -51,11 +64,13 @@ fn main() -> ExitCode {
     let result = match cli.command {
         Command::Check {
             require_justification,
+            format,
         } => run_check(
             &cli.root,
             CheckOptions {
                 require_justification,
             },
+            format,
         ),
         Command::Accept { ids, all } => run_accept(&cli.root, ids, all),
     };
@@ -65,12 +80,17 @@ fn main() -> ExitCode {
     })
 }
 
-fn run_check(root: &Path, options: CheckOptions) -> emperor::Result<ExitCode> {
+fn run_check(root: &Path, options: CheckOptions, format: Format) -> emperor::Result<ExitCode> {
     let tree = Tree::load(root)?;
     let problems = check(&tree, &lockfile::read(root)?, &options)?;
-    for problem in &problems {
-        println!("{problem}");
-    }
+    let report = match format {
+        Format::Human => report::human(&problems),
+        Format::Json => report::json(&problems),
+        Format::Github => report::github(&problems, |justification| {
+            locate::line_of(root, justification)
+        }),
+    };
+    print!("{report}");
     Ok(if problems.is_empty() {
         ExitCode::SUCCESS
     } else {

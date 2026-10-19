@@ -7,6 +7,7 @@ use std::fmt::Write;
 
 use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
 use quote::ToTokens;
+use syn::spanned::Spanned;
 use syn::{Item, ItemFn};
 
 use crate::fingerprint::sha256;
@@ -20,6 +21,12 @@ pub fn fingerprint_function(source: &str, path: &str) -> syn::Result<Option<Stri
     let file = syn::parse_file(source)?;
     Ok(find_function(&file.items, path)
         .map(|function| sha256(canonical_text(function.to_token_stream()).as_bytes())))
+}
+
+/// The line the function at `path` starts on, counting its attributes.
+pub fn function_line(source: &str, path: &str) -> syn::Result<Option<usize>> {
+    let file = syn::parse_file(source)?;
+    Ok(find_function(&file.items, path).map(|function| function.span().start().line))
 }
 
 fn find_function<'a>(items: &'a [Item], path: &str) -> Option<&'a ItemFn> {
@@ -132,6 +139,15 @@ mod tests {
 
     fn original() -> String {
         fingerprint(SOURCE, "rejects_bad_password").unwrap()
+    }
+
+    #[test]
+    fn reports_the_line_a_function_starts_on() {
+        assert_eq!(
+            function_line(SOURCE, "rejects_bad_password").unwrap(),
+            Some(2)
+        );
+        assert_eq!(function_line(SOURCE, "other").unwrap(), Some(7));
     }
 
     #[test]

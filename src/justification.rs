@@ -2,10 +2,13 @@
 
 use std::fmt;
 
+use serde::Serialize;
+
 use crate::doorstop::{Item, Reference};
 use crate::error::{Error, Result};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(tag = "type", rename_all = "kebab-case")]
 pub enum Justification {
     /// A whole file, compared byte for byte.
     File { path: String },
@@ -23,6 +26,13 @@ impl fmt::Display for Justification {
 }
 
 impl Justification {
+    /// The file the justification is in, relative to the project root.
+    pub fn path(&self) -> &str {
+        match self {
+            Justification::File { path } | Justification::RustFn { path, .. } => path,
+        }
+    }
+
     /// Identifies the justification in the lockfile.
     pub fn key(&self) -> String {
         self.to_string()

@@ -2,6 +2,8 @@
 
 use std::fmt;
 
+use serde::Serialize;
+
 use crate::doorstop::Tree;
 use crate::error::Result;
 use crate::fingerprint;
@@ -14,7 +16,8 @@ pub struct CheckOptions {
     pub require_justification: bool,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum Problem {
     /// The justification changed since it was last accepted.
     Changed {
@@ -37,37 +40,55 @@ pub enum Problem {
     RequirementRemoved { requirement: String },
 }
 
+impl Problem {
+    pub fn requirement(&self) -> &str {
+        match self {
+            Problem::Changed { requirement, .. }
+            | Problem::Unaccepted { requirement, .. }
+            | Problem::Missing { requirement, .. }
+            | Problem::Unjustified { requirement }
+            | Problem::RequirementRemoved { requirement } => requirement,
+        }
+    }
+
+    pub fn justification(&self) -> Option<&Justification> {
+        match self {
+            Problem::Changed { justification, .. }
+            | Problem::Unaccepted { justification, .. }
+            | Problem::Missing { justification, .. } => Some(justification),
+            Problem::Unjustified { .. } | Problem::RequirementRemoved { .. } => None,
+        }
+    }
+
+    /// What is wrong, without naming the requirement.
+    pub fn description(&self) -> String {
+        match self {
+            Problem::Changed { justification, .. } => {
+                format!("{justification} changed since it was accepted")
+            }
+            Problem::Unaccepted { justification, .. } => {
+                format!("{justification} has not been accepted")
+            }
+            Problem::Missing { justification, .. } => format!("{justification} not found"),
+            Problem::Unjustified { .. } => "has no justifications".to_string(),
+            Problem::RequirementRemoved { .. } => "requirement no longer exists".to_string(),
+        }
+    }
+
+    /// Whether running `emperor accept` after a review resolves the problem.
+    pub fn is_resolved_by_accepting(&self) -> bool {
+        matches!(
+            self,
+            Problem::Changed { .. }
+                | Problem::Unaccepted { .. }
+                | Problem::RequirementRemoved { .. }
+        )
+    }
+}
+
 impl fmt::Display for Problem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Problem::Changed {
-                requirement,
-                justification,
-            } => {
-                write!(
-                    f,
-                    "{requirement}: {justification} changed since it was accepted"
-                )
-            }
-            Problem::Unaccepted {
-                requirement,
-                justification,
-            } => {
-                write!(f, "{requirement}: {justification} has not been accepted")
-            }
-            Problem::Missing {
-                requirement,
-                justification,
-            } => {
-                write!(f, "{requirement}: {justification} not found")
-            }
-            Problem::Unjustified { requirement } => {
-                write!(f, "{requirement}: has no justifications")
-            }
-            Problem::RequirementRemoved { requirement } => {
-                write!(f, "{requirement}: requirement no longer exists")
-            }
-        }
+        write!(f, "{}: {}", self.requirement(), self.description())
     }
 }
 
