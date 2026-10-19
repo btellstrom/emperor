@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Cached verdicts
+level: 8.3
+links:
+- NEED005: TUX-bn3hYsrm66eLWlPL5-LEa3xXhS4OS1Ddle6OYbg=
+normative: true
+ref: ''
+reviewed: rf43sgTpMUyyrlUAWyDd_m2MiK_3l7ewqBNB_ys5jBY=
+text: |
+  `judge` shall reuse a verdict until the requirement or its justifications change.

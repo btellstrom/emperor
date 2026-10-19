@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: |
+  Test results
+level: 7.0
+links: []
+normative: false
+ref: ''
+reviewed: ti4msNvvOnZBbuly7YGqtgftQqXHUfyl5qoKJxS6T2s=
+text: |
+  Test results show whether the tests justifying a requirement passed.

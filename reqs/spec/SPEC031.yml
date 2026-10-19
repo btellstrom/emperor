@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Test outcomes
+level: 7.1
+links:
+- NEED004: m90Kgc7_9klEUYsFYtWv-cLHGeTtlHGUjgURSk_pmoA=
+normative: true
+ref: ''
+reviewed: bFBdz6lKgAwgZoX0dJbFa58CdSdz6CguB_WcjiemoF4=
+text: |
+  When given test results, `check` shall report each justifying test that failed, was skipped or did not run.

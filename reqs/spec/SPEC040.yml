@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: |
+  Output
+level: 4.0
+links: []
+normative: false
+ref: ''
+reviewed: roRHW7qK--deLZSrlOGHlfcQmso3zB_C8oXitOWR8Oc=
+text: |
+  How `check` reports its results to people and to CI systems.

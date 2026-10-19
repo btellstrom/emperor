@@ -1,0 +1,22 @@
+# Rust
+/target
+**/*.rs.bk
+*.pdb
+
+# Python / uv
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Doorstop (`doorstop publish all public`)
+/public/
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store

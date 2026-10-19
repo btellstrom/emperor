@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Project root
+level: 5.4
+links:
+- NEED002: BYmYZP3TBVjDH6z-TlOUFtxtkSCWDa5D4noUsrSD9nM=
+normative: true
+ref: ''
+reviewed: 8nbsiO5IvMqIIRqkfeG_dNX7FJ18vRAln9NpqKIR_Nk=
+text: |
+  emperor shall accept the project root as an option, defaulting to the current folder.

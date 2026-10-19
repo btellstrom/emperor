@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Uninterpretable justifications
+level: 3.3
+links:
+- NEED002: BYmYZP3TBVjDH6z-TlOUFtxtkSCWDa5D4noUsrSD9nM=
+normative: true
+ref: ''
+reviewed: IfJAPXBq6OhIHBIMeGEwZ47BNe8m3OQ5OVtkME0Jsho=
+text: |
+  emperor shall report a justification it cannot interpret as an error.

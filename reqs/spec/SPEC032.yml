@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Optional test results
+level: 7.2
+links:
+- NEED004: m90Kgc7_9klEUYsFYtWv-cLHGeTtlHGUjgURSk_pmoA=
+normative: true
+ref: ''
+reviewed: TkltWaIG3fOBjsbeYFXQxBQaQMWmUxrsIMAeG1tjjUU=
+text: |
+  `check` shall only consider test outcomes when it is given test results.

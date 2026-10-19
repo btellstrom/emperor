@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Doorstop file formats
+level: 5.2
+links:
+- NEED003: 3O4YQUyIcJOBVL5-IDSluIAB2FJ03o9Eg5HtxCqbl1o=
+normative: true
+ref: ''
+reviewed: b-fZi3CAupepphFGcqnKZ-5fPicjdZyNqhE8SNOc9fM=
+text: |
+  emperor shall read every YAML document and item file that Doorstop 3 writes.

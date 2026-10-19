@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: |
+  Check
+level: 1.0
+links: []
+normative: false
+ref: ''
+reviewed: 51itKKa33qnXc0JrLifi4DylWPsWo2LP8BhTMKqGjRE=
+text: |
+  `emperor check` compares every justification with the fingerprint recorded when it was accepted.

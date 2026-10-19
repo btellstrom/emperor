@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Safe accept
+level: 2.3
+links:
+- NEED001: mtyU8v9AfccP9ZO3PZik_SF7bxlB1p6skGXdNpOYOto=
+normative: true
+ref: ''
+reviewed: UbAfZx6KQ6oWa8E6tmqEm05Zl-JhtlUhiM_hNeWORq8=
+text: |
+  `accept` shall leave the lockfile unchanged and report an error when a requirement is unknown, a justification is missing, or no requirement is given.

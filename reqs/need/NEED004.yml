@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: |
+  Passing tests
+level: 1.4
+links: []
+normative: true
+ref: ''
+reviewed: m90Kgc7_9klEUYsFYtWv-cLHGeTtlHGUjgURSk_pmoA=
+text: |
+  emperor shall be able to require that the tests justifying a requirement have passed.

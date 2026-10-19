@@ -1,0 +1,11 @@
+[project]
+name = "emperor"
+version = "0.1.0"
+description = "Python tooling (Doorstop) for the emperor requirements"
+requires-python = ">=3.14"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "doorstop>=3.2",
+]

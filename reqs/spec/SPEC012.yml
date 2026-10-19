@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Deterministic lockfile
+level: 2.4
+links:
+- NEED002: BYmYZP3TBVjDH6z-TlOUFtxtkSCWDa5D4noUsrSD9nM=
+normative: true
+ref: ''
+reviewed: AVJ_Uy0hL9MqXPpyQ3gbj1tVyizsFuokEe55k5VnGDc=
+text: |
+  Writing the lockfile twice from the same state shall produce identical files, with requirements in ID order.

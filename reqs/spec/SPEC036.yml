@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Judge errors
+level: 8.4
+links:
+- NEED005: TUX-bn3hYsrm66eLWlPL5-LEa3xXhS4OS1Ddle6OYbg=
+normative: true
+ref: ''
+reviewed: fMr6W2avBra8Fy_iZc2enEk8bDXt3T3MLO6w_gESlaI=
+text: |
+  `judge` shall report a missing or failing judge as an error.

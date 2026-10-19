@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Ignored files
+level: 6.7
+links:
+- NEED001: mtyU8v9AfccP9ZO3PZik_SF7bxlB1p6skGXdNpOYOto=
+normative: true
+ref: ''
+reviewed: 31LsdBL2OKm7_N8sF46Hu6agNVQxgd6jde8jcRAZSy0=
+text: |
+  emperor shall not scan files that git ignores.

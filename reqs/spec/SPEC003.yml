@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Missing justifications
+level: 1.3
+links:
+- NEED001: mtyU8v9AfccP9ZO3PZik_SF7bxlB1p6skGXdNpOYOto=
+normative: true
+ref: ''
+reviewed: CWj5kdSwO1xmLEyX5_feru4qezAM8oVtOUBjGwT0SKg=
+text: |
+  `check` shall report every justification that can no longer be found.

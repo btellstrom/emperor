@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Unaccepted justifications
+level: 1.2
+links:
+- NEED001: mtyU8v9AfccP9ZO3PZik_SF7bxlB1p6skGXdNpOYOto=
+normative: true
+ref: ''
+reviewed: 3MUzW15GnbKaZ9Jj5-OWJYz764H3F46Q3HoTp1IzwLE=
+text: |
+  `check` shall report every justification that has never been accepted.

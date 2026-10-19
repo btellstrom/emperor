@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Load the tree
+level: 5.1
+links:
+- NEED003: 3O4YQUyIcJOBVL5-IDSluIAB2FJ03o9Eg5HtxCqbl1o=
+normative: true
+ref: ''
+reviewed: Ey_g1tdyTlMpDiqOuIvN6ugfHxr8sVKZ1pL4tr4zads=
+text: |
+  emperor shall load every item of every document in the Doorstop tree exactly once, skipping folders marked with `.doorstop.skip`.

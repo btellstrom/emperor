@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Gherkin scenario identity
+level: 6.4
+links:
+- NEED001: mtyU8v9AfccP9ZO3PZik_SF7bxlB1p6skGXdNpOYOto=
+normative: true
+ref: ''
+reviewed: 7qTpZ69zummyBVlb4gY9wEx5Ixa2cT2kP-6YPtOi-IE=
+text: |
+  A Gherkin scenario shall be identified by its file and name, and the name shall be unique within the file.

@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: |
+  Accept
+level: 2.0
+links: []
+normative: false
+ref: ''
+reviewed: roS9jMD93Ze9h1uAKdunFnu9XoLHMhrE4dEGr1hhAco=
+text: |
+  `emperor accept` records the fingerprints of justifications after a person has reviewed them.

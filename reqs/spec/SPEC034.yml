@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Advisory verdicts
+level: 8.2
+links:
+- NEED005: TUX-bn3hYsrm66eLWlPL5-LEa3xXhS4OS1Ddle6OYbg=
+normative: true
+ref: ''
+reviewed: 3KncTuCg7qO0GJyTImH7LYFb_T736FdiDS8Zynz1MBE=
+text: |
+  `judge` shall report each verdict with its reason, and shall fail on an unfulfilled verdict only when asked to.

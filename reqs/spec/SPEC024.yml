@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Justifies attribute
+level: 6.1
+links:
+- NEED001: mtyU8v9AfccP9ZO3PZik_SF7bxlB1p6skGXdNpOYOto=
+normative: true
+ref: ''
+reviewed: zZuEbV3Enqe8CNvcCvjoAYXVu4ONm4_AiHNZWVukLpE=
+text: |
+  A Rust function carrying the `justifies` attribute shall be a justification of each requirement the attribute names.

@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Forget removed justifications
+level: 2.2
+links:
+- NEED001: mtyU8v9AfccP9ZO3PZik_SF7bxlB1p6skGXdNpOYOto=
+normative: true
+ref: ''
+reviewed: Twnixbb8hpe2x3S8C_wPA4ERs1p6HPdSd6TpGNOkFyQ=
+text: |
+  `accept` shall remove the fingerprints of justifications and requirements that no longer exist.

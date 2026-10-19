@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Unsupported data
+level: 5.3
+links:
+- NEED003: 3O4YQUyIcJOBVL5-IDSluIAB2FJ03o9Eg5HtxCqbl1o=
+normative: true
+ref: ''
+reviewed: k3vU4dfAwrF91DFHaaKGWnRAfhrDBP3yA9kcxsYAzhk=
+text: |
+  emperor shall report a missing Doorstop tree, Markdown items and invalid files as errors instead of skipping them.

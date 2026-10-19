@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Exit codes
+level: 4.1
+links:
+- NEED002: BYmYZP3TBVjDH6z-TlOUFtxtkSCWDa5D4noUsrSD9nM=
+normative: true
+ref: ''
+reviewed: hA8KOpoznxur9bF31uVCg1YMYCEKsrTufP-XKKtJ-gk=
+text: |
+  `check` shall exit with 0 when it finds no problems, 1 when it finds problems, and 2 when it cannot complete.

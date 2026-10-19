@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Judge input
+level: 8.1
+links:
+- NEED005: TUX-bn3hYsrm66eLWlPL5-LEa3xXhS4OS1Ddle6OYbg=
+normative: true
+ref: ''
+reviewed: SWHoJYWrnBtkBw8gYkbDu9rX9eV9cGA21CoUHQboGzE=
+text: |
+  `judge` shall give the judge the requirement and the content of its justifications.

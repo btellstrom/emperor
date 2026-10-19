@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Complete report
+level: 1.7
+links:
+- NEED002: BYmYZP3TBVjDH6z-TlOUFtxtkSCWDa5D4noUsrSD9nM=
+normative: true
+ref: ''
+reviewed: 9I_UDVpU8EHUQQWVAVGwOA2Rms4Y4wC-F4WrHHV4oMI=
+text: |
+  `check` shall report all problems it finds in a single run.

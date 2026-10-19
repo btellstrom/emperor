@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Unknown requirements in tags
+level: 6.6
+links:
+- NEED001: mtyU8v9AfccP9ZO3PZik_SF7bxlB1p6skGXdNpOYOto=
+normative: true
+ref: ''
+reviewed: 5PBlCbQ8iylr4NhSZ3BzFn16avqv5hNtSY6tdrAiGxU=
+text: |
+  `check` shall report a tag that names an unknown requirement, with the tag's file and line.

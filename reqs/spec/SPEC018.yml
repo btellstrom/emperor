@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  JSON output
+level: 4.3
+links:
+- NEED002: BYmYZP3TBVjDH6z-TlOUFtxtkSCWDa5D4noUsrSD9nM=
+normative: true
+ref: ''
+reviewed: 34o50lVcHkKP8ktnCLbB8f38vVm8N6kCtIaT7Nf56Eg=
+text: |
+  `check` shall be able to report its problems as JSON.

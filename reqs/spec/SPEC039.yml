@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: |
+  Rust functions
+level: 3.0
+links: []
+normative: false
+ref: ''
+reviewed: 0TwkQWz7sJIYwUwdEQFSlPXNFWxWwMQYe3dk-MoX0Pc=
+text: |
+  A justification can be a single Rust function rather than a whole file.

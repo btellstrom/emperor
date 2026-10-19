@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: |
+  Tags in code and scenarios
+level: 6.0
+links: []
+normative: false
+ref: ''
+reviewed: lndFnPyHKkl9rGkF1E6yNKQRGHc7ky8cW5R3PNbcjq8=
+text: |
+  Code and Gherkin scenarios can name the requirements they justify.

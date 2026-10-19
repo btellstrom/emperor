@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Human-readable output
+level: 4.2
+links:
+- NEED002: BYmYZP3TBVjDH6z-TlOUFtxtkSCWDa5D4noUsrSD9nM=
+normative: true
+ref: ''
+reviewed: _r-HpkWQ8wljyX9P7xN4dJsco5sdaXVwbzFrlz-2KXw=
+text: |
+  By default, `check` shall print each problem on its own line, followed by a summary that tells the reader how to accept the changes.

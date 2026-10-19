@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  GitHub annotations
+level: 4.4
+links:
+- NEED002: BYmYZP3TBVjDH6z-TlOUFtxtkSCWDa5D4noUsrSD9nM=
+normative: true
+ref: ''
+reviewed: uSa0Zw6LbU1jr_xvoN2AF60KMVQ8trx-k0FUak43y1A=
+text: |
+  `check` shall be able to report its problems as GitHub Actions annotations on the file and line of each justification.

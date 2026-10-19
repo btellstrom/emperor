@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Rust function fingerprint
+level: 3.1
+links:
+- NEED001: mtyU8v9AfccP9ZO3PZik_SF7bxlB1p6skGXdNpOYOto=
+normative: true
+ref: ''
+reviewed: 98LADkOeuAuhlBVCzJ2gn4s8J8hk09bo2oNQ7EMylxw=
+text: |
+  A Rust function justification shall be fingerprinted from the function's tokens and attributes, ignoring formatting and comments.

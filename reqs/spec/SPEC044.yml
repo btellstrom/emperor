@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: |
+  Judge
+level: 8.0
+links: []
+normative: false
+ref: ''
+reviewed: AWuffU2ejsjV9HMLMm--7FoyJ88IinQTVLWKH482Vj4=
+text: |
+  `emperor judge` asks an external judge, such as an LLM, whether a requirement is fulfilled.

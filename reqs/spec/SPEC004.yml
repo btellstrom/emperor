@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Removed requirements
+level: 1.4
+links:
+- NEED001: mtyU8v9AfccP9ZO3PZik_SF7bxlB1p6skGXdNpOYOto=
+normative: true
+ref: ''
+reviewed: V_GmLxew7VbJi7py4JYjuH66vUz82jjsMhzSef3XIbM=
+text: |
+  `check` shall report accepted fingerprints that belong to a requirement that no longer exists.

@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Read-only check
+level: 1.8
+links:
+- NEED002: BYmYZP3TBVjDH6z-TlOUFtxtkSCWDa5D4noUsrSD9nM=
+normative: true
+ref: ''
+reviewed: qiSno8DHg9J96xVRNwOn8j-vcPdf3KdpEUY1REJqJ7E=
+text: |
+  `check` shall not modify any file.
