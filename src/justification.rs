@@ -18,6 +18,13 @@ impl fmt::Display for Justification {
     }
 }
 
+impl Justification {
+    /// Identifies the justification in the lockfile.
+    pub fn key(&self) -> String {
+        self.to_string()
+    }
+}
+
 /// The justifications a Doorstop item names itself.
 pub fn of_item(item: &Item) -> Vec<Justification> {
     item.references

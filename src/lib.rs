@@ -5,5 +5,7 @@ pub mod error;
 pub mod fingerprint;
 pub mod justification;
 pub mod lockfile;
+#[cfg(test)]
+mod test_support;
 
 pub use error::{Error, Result};

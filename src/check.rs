@@ -104,7 +104,7 @@ fn check_justification(
     };
     let accepted = locked
         .get(uid)
-        .and_then(|fingerprints| fingerprints.get(&justification.to_string()));
+        .and_then(|fingerprints| fingerprints.get(&justification.key()));
     Ok(match accepted {
         None => Some(Problem::Unaccepted {
             requirement,
@@ -132,100 +132,35 @@ fn removed_requirements<'a>(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
     use std::fs;
 
-    use tempfile::TempDir;
-
     use super::*;
-    use crate::doorstop::{Item, Reference};
+    use crate::test_support::{Project, file, locked};
 
-    struct Fixture {
-        project: TempDir,
-        items: Vec<Item>,
-        locked: Fingerprints,
+    fn check_project(project: &Project, locked: &Fingerprints) -> Vec<Problem> {
+        check(&project.tree(), locked, &CheckOptions::default()).unwrap()
     }
 
-    impl Fixture {
-        fn new() -> Fixture {
-            Fixture {
-                project: TempDir::new().unwrap(),
-                items: Vec::new(),
-                locked: Fingerprints::new(),
-            }
-        }
-
-        fn requirement(mut self, uid: &str, files: &[&str]) -> Fixture {
-            for file in files {
-                fs::write(
-                    self.project.path().join(file),
-                    format!("contents of {file}"),
-                )
-                .unwrap();
-            }
-            self.items.push(Item {
-                uid: uid.to_string(),
-                active: true,
-                references: files.iter().map(|file| Reference::file(file)).collect(),
-            });
-            self
-        }
-
-        fn inactive(mut self) -> Fixture {
-            self.items.last_mut().unwrap().active = false;
-            self
-        }
-
-        fn accepted(mut self, uid: &str, file: &str, fingerprint: &str) -> Fixture {
-            self.locked
-                .entry(uid.to_string())
-                .or_default()
-                .insert(format!("file:{file}"), fingerprint.to_string());
-            self
-        }
-
-        fn accepted_as_is(self, uid: &str, file: &str) -> Fixture {
-            let contents = fs::read(self.project.path().join(file)).unwrap();
-            let fingerprint = fingerprint::sha256(&contents);
-            self.accepted(uid, file, &fingerprint)
-        }
-
-        fn check(&self, options: CheckOptions) -> Vec<Problem> {
-            let tree = Tree {
-                root: self.project.path().to_path_buf(),
-                items: self
-                    .items
-                    .iter()
-                    .map(|item| (item.uid.clone(), item.clone()))
-                    .collect::<BTreeMap<_, _>>(),
-            };
-            check(&tree, &self.locked, &options).unwrap()
-        }
-    }
-
-    fn file(path: &str) -> Justification {
-        Justification::File {
-            path: path.to_string(),
-        }
+    fn requiring_justification(project: &Project) -> Vec<Problem> {
+        let options = CheckOptions {
+            require_justification: true,
+        };
+        check(&project.tree(), &Fingerprints::new(), &options).unwrap()
     }
 
     #[test]
     fn accepted_unchanged_justification_has_no_problems() {
-        let fixture = Fixture::new()
-            .requirement("REQ001", &["a.rs"])
-            .accepted_as_is("REQ001", "a.rs");
-        assert_eq!(fixture.check(CheckOptions::default()), vec![]);
+        let project = Project::new().requirement("REQ001", &["a.rs"]);
+        let locked = locked(&[("REQ001", "file:a.rs", &project.fingerprint_of("a.rs"))]);
+        assert_eq!(check_project(&project, &locked), vec![]);
     }
 
     #[test]
     fn changed_justification_is_reported() {
-        let fixture = Fixture::new().requirement("REQ001", &["a.rs"]).accepted(
-            "REQ001",
-            "a.rs",
-            "sha256:old",
-        );
+        let project = Project::new().requirement("REQ001", &["a.rs"]);
+        let locked = locked(&[("REQ001", "file:a.rs", "sha256:old")]);
         assert_eq!(
-            fixture.check(CheckOptions::default()),
+            check_project(&project, &locked),
             vec![Problem::Changed {
                 requirement: "REQ001".into(),
                 justification: file("a.rs")
@@ -235,9 +170,9 @@ mod tests {
 
     #[test]
     fn unaccepted_justification_is_reported() {
-        let fixture = Fixture::new().requirement("REQ001", &["a.rs"]);
+        let project = Project::new().requirement("REQ001", &["a.rs"]);
         assert_eq!(
-            fixture.check(CheckOptions::default()),
+            check_project(&project, &Fingerprints::new()),
             vec![Problem::Unaccepted {
                 requirement: "REQ001".into(),
                 justification: file("a.rs")
@@ -247,12 +182,11 @@ mod tests {
 
     #[test]
     fn missing_justification_is_reported() {
-        let fixture = Fixture::new()
-            .requirement("REQ001", &["a.rs"])
-            .accepted_as_is("REQ001", "a.rs");
-        fs::remove_file(fixture.project.path().join("a.rs")).unwrap();
+        let project = Project::new().requirement("REQ001", &["a.rs"]);
+        let locked = locked(&[("REQ001", "file:a.rs", &project.fingerprint_of("a.rs"))]);
+        fs::remove_file(project.path("a.rs")).unwrap();
         assert_eq!(
-            fixture.check(CheckOptions::default()),
+            check_project(&project, &locked),
             vec![Problem::Missing {
                 requirement: "REQ001".into(),
                 justification: file("a.rs")
@@ -262,24 +196,23 @@ mod tests {
 
     #[test]
     fn inactive_requirements_are_not_checked() {
-        let fixture = Fixture::new().requirement("REQ001", &["a.rs"]).inactive();
-        assert_eq!(fixture.check(CheckOptions::default()), vec![]);
+        let project = Project::new()
+            .requirement("REQ001", &["a.rs"])
+            .inactive("REQ001");
+        assert_eq!(check_project(&project, &Fingerprints::new()), vec![]);
     }
 
     #[test]
     fn unjustified_requirement_passes_by_default() {
-        let fixture = Fixture::new().requirement("REQ001", &[]);
-        assert_eq!(fixture.check(CheckOptions::default()), vec![]);
+        let project = Project::new().requirement("REQ001", &[]);
+        assert_eq!(check_project(&project, &Fingerprints::new()), vec![]);
     }
 
     #[test]
     fn unjustified_requirement_is_reported_when_justification_is_required() {
-        let fixture = Fixture::new().requirement("REQ001", &[]);
-        let options = CheckOptions {
-            require_justification: true,
-        };
+        let project = Project::new().requirement("REQ001", &[]);
         assert_eq!(
-            fixture.check(options),
+            requiring_justification(&project),
             vec![Problem::Unjustified {
                 requirement: "REQ001".into()
             }]
@@ -288,18 +221,15 @@ mod tests {
 
     #[test]
     fn inactive_unjustified_requirement_is_not_reported() {
-        let fixture = Fixture::new().requirement("REQ001", &[]).inactive();
-        let options = CheckOptions {
-            require_justification: true,
-        };
-        assert_eq!(fixture.check(options), vec![]);
+        let project = Project::new().requirement("REQ001", &[]).inactive("REQ001");
+        assert_eq!(requiring_justification(&project), vec![]);
     }
 
     #[test]
     fn accepted_fingerprints_of_a_removed_requirement_are_reported() {
-        let fixture = Fixture::new().accepted("REQ001", "a.rs", "sha256:old");
+        let locked = locked(&[("REQ001", "file:a.rs", "sha256:old")]);
         assert_eq!(
-            fixture.check(CheckOptions::default()),
+            check_project(&Project::new(), &locked),
             vec![Problem::RequirementRemoved {
                 requirement: "REQ001".into()
             }]
@@ -308,19 +238,19 @@ mod tests {
 
     #[test]
     fn accepted_fingerprints_of_an_inactive_requirement_are_not_reported_as_removed() {
-        let fixture = Fixture::new()
+        let project = Project::new()
             .requirement("REQ001", &["a.rs"])
-            .inactive()
-            .accepted("REQ001", "a.rs", "sha256:old");
-        assert_eq!(fixture.check(CheckOptions::default()), vec![]);
+            .inactive("REQ001");
+        let locked = locked(&[("REQ001", "file:a.rs", "sha256:old")]);
+        assert_eq!(check_project(&project, &locked), vec![]);
     }
 
     #[test]
     fn every_problem_is_reported() {
-        let fixture = Fixture::new()
+        let project = Project::new()
             .requirement("REQ001", &["a.rs"])
             .requirement("REQ002", &["b.rs"]);
-        assert_eq!(fixture.check(CheckOptions::default()).len(), 2);
+        assert_eq!(check_project(&project, &Fingerprints::new()).len(), 2);
     }
 
     #[test]
