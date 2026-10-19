@@ -17,7 +17,8 @@ pub fn read(root: &Path) -> Result<Fingerprints> {
     if !path.exists() {
         return Ok(Fingerprints::new());
     }
-    toml::from_str(&fs::read_to_string(&path)?).map_err(|e| format!("{}: {e}", path.display()).into())
+    toml::from_str(&fs::read_to_string(&path)?)
+        .map_err(|e| format!("{}: {e}", path.display()).into())
 }
 
 pub fn write(root: &Path, fingerprints: &Fingerprints) -> Result<()> {

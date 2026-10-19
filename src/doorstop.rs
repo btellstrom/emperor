@@ -33,12 +33,22 @@ pub struct Document {
     pub dir: PathBuf,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Reference {
     pub path: String,
     #[serde(rename = "type")]
     pub kind: String,
     pub keyword: Option<String>,
+}
+
+impl Reference {
+    pub fn file(path: &str) -> Reference {
+        Reference {
+            path: path.to_string(),
+            kind: "file".to_string(),
+            keyword: None,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -53,7 +63,7 @@ fn default_active() -> bool {
     true
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Item {
     pub uid: String,
     pub active: bool,
@@ -105,10 +115,14 @@ fn find_documents(dir: &Path, documents: &mut Vec<Document>) -> Result<()> {
         match file.settings.itemformat.as_deref() {
             None | Some("yaml") => {}
             Some("markdown") => {
-                return Err(format!("{}: Markdown items are not supported", file.settings.prefix).into());
+                return Err(
+                    format!("{}: Markdown items are not supported", file.settings.prefix).into(),
+                );
             }
             Some(other) => {
-                return Err(format!("{}: unknown item format {other}", file.settings.prefix).into());
+                return Err(
+                    format!("{}: unknown item format {other}", file.settings.prefix).into(),
+                );
             }
         }
         documents.push(Document {

@@ -3,11 +3,15 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
+use emperor::check::{CheckOptions, check};
 use emperor::doorstop::Tree;
 use emperor::lockfile;
 
 #[derive(Parser)]
-#[command(version, about = "Detect changed requirement justifications in a Doorstop tree")]
+#[command(
+    version,
+    about = "Detect changed requirement justifications in a Doorstop tree"
+)]
 struct Cli {
     /// Root of the project containing the Doorstop tree and the lockfile.
     #[arg(long, default_value = ".")]
@@ -20,7 +24,11 @@ struct Cli {
 #[derive(Subcommand)]
 enum Command {
     /// Fail if any justification changed since it was accepted.
-    Check,
+    Check {
+        /// Also fail for active requirements that have no justifications.
+        #[arg(long)]
+        require_justification: bool,
+    },
     /// Record the current justifications of requirements as reviewed.
     Accept {
         /// Requirement IDs to accept.
@@ -47,15 +55,28 @@ fn run(cli: Cli) -> emperor::Result<ExitCode> {
     let mut locked = lockfile::read(&cli.root)?;
 
     match cli.command {
-        Command::Check => {
-            let problems = emperor::check(&tree, &locked);
+        Command::Check {
+            require_justification,
+        } => {
+            let options = CheckOptions {
+                require_justification,
+            };
+            let problems = check(&tree, &locked, &options)?;
             for problem in &problems {
                 println!("{problem}");
             }
-            Ok(if problems.is_empty() { ExitCode::SUCCESS } else { ExitCode::FAILURE })
+            Ok(if problems.is_empty() {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            })
         }
         Command::Accept { ids, all } => {
-            let ids = if all { tree.items.keys().cloned().collect() } else { ids };
+            let ids = if all {
+                tree.items.keys().cloned().collect()
+            } else {
+                ids
+            };
             emperor::accept(&tree, &mut locked, &ids)?;
             lockfile::write(&cli.root, &locked)?;
             Ok(ExitCode::SUCCESS)
