@@ -1,95 +1,16 @@
 //! Compares the current justifications with the fingerprints accepted in the lockfile.
 
-use std::fmt;
-
-use serde::Serialize;
-
 use crate::doorstop::Tree;
 use crate::error::Result;
 use crate::fingerprint;
 use crate::justification::{self, Justification};
 use crate::lockfile::Fingerprints;
+pub use crate::problem::Problem;
 
 #[derive(Debug, Default)]
 pub struct CheckOptions {
     /// Report active requirements that have no justifications at all.
     pub require_justification: bool,
-}
-
-#[derive(Debug, PartialEq, Eq, Serialize)]
-#[serde(tag = "kind", rename_all = "kebab-case")]
-pub enum Problem {
-    /// The justification changed since it was last accepted.
-    Changed {
-        requirement: String,
-        justification: Justification,
-    },
-    /// The justification has never been accepted.
-    Unaccepted {
-        requirement: String,
-        justification: Justification,
-    },
-    /// The justification can no longer be found.
-    Missing {
-        requirement: String,
-        justification: Justification,
-    },
-    /// The requirement has no justifications, and justifications are required.
-    Unjustified { requirement: String },
-    /// The lockfile has fingerprints for a requirement that no longer exists.
-    RequirementRemoved { requirement: String },
-}
-
-impl Problem {
-    pub fn requirement(&self) -> &str {
-        match self {
-            Problem::Changed { requirement, .. }
-            | Problem::Unaccepted { requirement, .. }
-            | Problem::Missing { requirement, .. }
-            | Problem::Unjustified { requirement }
-            | Problem::RequirementRemoved { requirement } => requirement,
-        }
-    }
-
-    pub fn justification(&self) -> Option<&Justification> {
-        match self {
-            Problem::Changed { justification, .. }
-            | Problem::Unaccepted { justification, .. }
-            | Problem::Missing { justification, .. } => Some(justification),
-            Problem::Unjustified { .. } | Problem::RequirementRemoved { .. } => None,
-        }
-    }
-
-    /// What is wrong, without naming the requirement.
-    pub fn description(&self) -> String {
-        match self {
-            Problem::Changed { justification, .. } => {
-                format!("{justification} changed since it was accepted")
-            }
-            Problem::Unaccepted { justification, .. } => {
-                format!("{justification} has not been accepted")
-            }
-            Problem::Missing { justification, .. } => format!("{justification} not found"),
-            Problem::Unjustified { .. } => "has no justifications".to_string(),
-            Problem::RequirementRemoved { .. } => "requirement no longer exists".to_string(),
-        }
-    }
-
-    /// Whether running `emperor accept` after a review resolves the problem.
-    pub fn is_resolved_by_accepting(&self) -> bool {
-        matches!(
-            self,
-            Problem::Changed { .. }
-                | Problem::Unaccepted { .. }
-                | Problem::RequirementRemoved { .. }
-        )
-    }
-}
-
-impl fmt::Display for Problem {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.requirement(), self.description())
-    }
 }
 
 /// Every problem in the tree, in requirement order.
@@ -272,21 +193,5 @@ mod tests {
             .requirement("REQ001", &["a.rs"])
             .requirement("REQ002", &["b.rs"]);
         assert_eq!(check_project(&project, &Fingerprints::new()).len(), 2);
-    }
-
-    #[test]
-    fn problems_are_described_for_people() {
-        let changed = Problem::Changed {
-            requirement: "REQ001".into(),
-            justification: file("a.rs"),
-        };
-        assert_eq!(
-            changed.to_string(),
-            "REQ001: file:a.rs changed since it was accepted"
-        );
-        let removed = Problem::RequirementRemoved {
-            requirement: "REQ001".into(),
-        };
-        assert_eq!(removed.to_string(), "REQ001: requirement no longer exists");
     }
 }

@@ -6,6 +6,7 @@ pub mod fingerprint;
 pub mod justification;
 pub mod locate;
 pub mod lockfile;
+pub mod problem;
 pub mod report;
 pub mod rust_source;
 #[cfg(test)]

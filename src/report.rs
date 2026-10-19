@@ -2,8 +2,8 @@
 
 use std::collections::BTreeSet;
 
-use crate::check::Problem;
 use crate::justification::Justification;
+use crate::problem::Problem;
 
 /// Problems one per line, followed by a summary.
 pub fn human(problems: &[Problem]) -> String {
@@ -21,18 +21,17 @@ pub fn human(problems: &[Problem]) -> String {
 }
 
 fn summary(problems: &[Problem]) -> String {
-    let requirements = distinct(problems.iter().map(Problem::requirement));
+    let requirements: BTreeSet<&str> = problems.iter().map(Problem::requirement).collect();
     let mut summary = format!(
         "{} in {}.",
         counted(problems.len(), "problem"),
         counted(requirements.len(), "requirement")
     );
-    let acceptable = distinct(
-        problems
-            .iter()
-            .filter(|problem| problem.is_resolved_by_accepting())
-            .map(Problem::requirement),
-    );
+    let acceptable: BTreeSet<&str> = problems
+        .iter()
+        .filter(|problem| problem.is_resolved_by_accepting())
+        .map(Problem::requirement)
+        .collect();
     if !acceptable.is_empty() {
         let ids: Vec<&str> = acceptable.into_iter().collect();
         summary.push_str(&format!(
@@ -41,10 +40,6 @@ fn summary(problems: &[Problem]) -> String {
         ));
     }
     summary
-}
-
-fn distinct<'a>(requirements: impl Iterator<Item = &'a str>) -> BTreeSet<&'a str> {
-    requirements.collect()
 }
 
 fn counted(count: usize, noun: &str) -> String {
@@ -64,22 +59,24 @@ pub fn json(problems: &[Problem]) -> String {
 pub fn github(problems: &[Problem], line_of: impl Fn(&Justification) -> Option<usize>) -> String {
     problems
         .iter()
-        .map(|problem| {
-            let mut properties = Vec::new();
-            if let Some(justification) = problem.justification() {
-                properties.push(format!("file={}", escape_property(justification.path())));
-                if let Some(line) = line_of(justification) {
-                    properties.push(format!("line={line}"));
-                }
-            }
-            properties.push(format!("title={}", escape_property(problem.requirement())));
-            format!(
-                "::error {}::{}\n",
-                properties.join(","),
-                escape_message(&problem.description())
-            )
-        })
+        .map(|problem| annotation(problem, &line_of))
         .collect()
+}
+
+fn annotation(problem: &Problem, line_of: &impl Fn(&Justification) -> Option<usize>) -> String {
+    let mut properties = Vec::new();
+    if let Some(justification) = problem.justification() {
+        properties.push(format!("file={}", escape_property(justification.path())));
+        if let Some(line) = line_of(justification) {
+            properties.push(format!("line={line}"));
+        }
+    }
+    properties.push(format!("title={}", escape_property(problem.requirement())));
+    format!(
+        "::error {}::{}\n",
+        properties.join(","),
+        escape_message(&problem.description())
+    )
 }
 
 /// Escapes annotation text the way GitHub's toolkit does.
