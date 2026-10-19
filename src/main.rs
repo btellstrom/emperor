@@ -159,7 +159,8 @@ fn run_accept(root: &Path, ids: Vec<String>, all: bool) -> emperor::Result<ExitC
 
 fn run_judge(root: &Path, ids: &[String], fail_on_unfulfilled: bool) -> emperor::Result<ExitCode> {
     let config = judge::load_config(root)?;
-    let (tree, evidence, _) = load_project(root)?;
+    let tree = Tree::load(root)?;
+    let evidence = evidence::gather(&tree)?;
     let mut any_unfulfilled = false;
     for uid in ids {
         let request = judge::request(&tree, &evidence, uid)?;

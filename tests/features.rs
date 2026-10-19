@@ -466,12 +466,8 @@ fn judge_exits_with(world: &mut ProjectWorld, status: i32) {
 #[then("the judge received:")]
 fn judge_received(world: &mut ProjectWorld, step: &Step) {
     let mut expected = step.docstring.clone().expect("the step has a doc string");
-    for (path, _) in world
-        .items
-        .values()
-        .flat_map(|item| item.references.iter().map(|path| (path.clone(), ())))
-    {
-        let contents = fs::read_to_string(world.path(&path)).unwrap();
+    for path in world.items.values().flat_map(|item| &item.references) {
+        let contents = fs::read_to_string(world.path(path)).unwrap();
         let placeholder = format!("\"<contents of {path}>\"");
         expected = expected.replace(&placeholder, &serde_json::to_string(&contents).unwrap());
     }

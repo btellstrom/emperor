@@ -4,51 +4,28 @@
 //! on stdin and answers with a [`Verdict`] as JSON on stdout. Verdicts are cached until the
 //! request or the command changes, so unchanged requirements are not judged again.
 
-use std::collections::BTreeMap;
+mod cache;
+mod request;
+
 use std::fmt;
-use std::fs;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::thread;
 
 use serde::{Deserialize, Serialize};
 
-use crate::doorstop::Tree;
 use crate::error::{Error, Result};
-use crate::evidence::Evidence;
 use crate::files::read_source;
-use crate::fingerprint::sha256;
-use crate::justification::Justification;
-use crate::{gherkin_source, rust_source};
+use cache::{VerdictCache, cache_key};
+pub use request::{Request, request};
 
 const CONFIG_FILE: &str = "emperor.toml";
-const CACHE_FILE: &str = ".emperor/verdicts.json";
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct JudgeConfig {
     /// The program and its arguments.
     pub command: Vec<String>,
-}
-
-/// What the judge is asked to assess.
-#[derive(Debug, Serialize)]
-pub struct Request {
-    requirement: RequirementText,
-    justifications: Vec<JustificationContent>,
-}
-
-#[derive(Debug, Serialize)]
-struct RequirementText {
-    id: String,
-    text: String,
-}
-
-#[derive(Debug, Serialize)]
-struct JustificationContent {
-    #[serde(flatten)]
-    justification: Justification,
-    content: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -108,51 +85,6 @@ pub fn load_config(root: &Path) -> Result<JudgeConfig> {
     file.judge.ok_or(Error::NoJudge)
 }
 
-/// The request for a requirement: its text and the content of every justification.
-pub fn request(tree: &Tree, evidence: &Evidence, uid: &str) -> Result<Request> {
-    let item = tree
-        .items
-        .get(uid)
-        .ok_or_else(|| Error::UnknownRequirement(uid.to_string()))?;
-    let justifications = evidence
-        .of(uid)
-        .map(|justification| {
-            Ok(JustificationContent {
-                content: content_of(&tree.root, uid, justification)?,
-                justification: justification.clone(),
-            })
-        })
-        .collect::<Result<_>>()?;
-    Ok(Request {
-        requirement: RequirementText {
-            id: uid.to_string(),
-            text: item.text.clone(),
-        },
-        justifications,
-    })
-}
-
-/// The text of a justification: a whole file, or just the function or scenario.
-fn content_of(root: &Path, uid: &str, justification: &Justification) -> Result<String> {
-    let not_found = || Error::JustificationNotFound {
-        requirement: uid.to_string(),
-        justification: justification.clone(),
-    };
-    let path = root.join(justification.path());
-    let source = read_source(&path)?.ok_or_else(not_found)?;
-    let content = match justification {
-        Justification::File { .. } => Some(source),
-        Justification::RustFn { item, .. } => {
-            rust_source::function_source(&source, item).map_err(Error::parse(&path))?
-        }
-        Justification::Gherkin { scenario, .. } => {
-            let feature = gherkin_source::parse(&source).map_err(Error::parse(&path))?;
-            gherkin_source::scenario_source(&feature, &source, scenario)
-        }
-    };
-    content.ok_or_else(not_found)
-}
-
 /// The judge's verdict on a request, from the cache when the request was judged before.
 pub fn judge(root: &Path, config: &JudgeConfig, uid: &str, request: &Request) -> Result<Judgement> {
     let input = serde_json::to_string_pretty(request).expect("requests always serialise to JSON");
@@ -204,37 +136,6 @@ fn ask(root: &Path, config: &JudgeConfig, uid: &str, input: &str) -> Result<Verd
     }
     serde_json::from_slice(&output.stdout)
         .map_err(|error| failed(format!("invalid verdict: {error}")))
-}
-
-/// Identifies a request to a particular judge.
-fn cache_key(config: &JudgeConfig, input: &str) -> String {
-    let judged = serde_json::json!([config.command, input]).to_string();
-    sha256(judged.as_bytes())
-}
-
-/// Verdicts by cache key, kept in `.emperor/verdicts.json`.
-struct VerdictCache {
-    path: PathBuf,
-    verdicts: BTreeMap<String, Verdict>,
-}
-
-impl VerdictCache {
-    fn load(root: &Path) -> Result<VerdictCache> {
-        let path = root.join(CACHE_FILE);
-        let verdicts = match read_source(&path)? {
-            Some(json) => serde_json::from_str(&json).map_err(Error::parse(&path))?,
-            None => BTreeMap::new(),
-        };
-        Ok(VerdictCache { path, verdicts })
-    }
-
-    fn save(&self) -> Result<()> {
-        let folder = self.path.parent().expect("the cache file is in a folder");
-        fs::create_dir_all(folder).map_err(Error::io(folder))?;
-        let json = serde_json::to_string_pretty(&self.verdicts)
-            .expect("verdicts always serialise to JSON");
-        fs::write(&self.path, json + "\n").map_err(Error::io(&self.path))
-    }
 }
 
 #[cfg(test)]
