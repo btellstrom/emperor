@@ -8,7 +8,8 @@ use emperor::check::{CheckOptions, check};
 use emperor::doorstop::Tree;
 use emperor::evidence::{self, Evidence};
 use emperor::lockfile::{self, Fingerprints};
-use emperor::{locate, report};
+use emperor::test_results::TestResults;
+use emperor::{Error, locate, report};
 
 /// `check` found problems.
 const EXIT_PROBLEMS: u8 = 1;
@@ -46,6 +47,9 @@ enum Command {
         /// Also fail for active requirements that have no justifications.
         #[arg(long)]
         require_justification: bool,
+        /// JUnit XML test results; every test justifying a requirement must have passed.
+        #[arg(long, value_name = "FILE")]
+        test_results: Option<PathBuf>,
         /// How to report problems.
         #[arg(long, value_enum, default_value_t = Format::Human)]
         format: Format,
@@ -66,20 +70,31 @@ fn main() -> ExitCode {
     let result = match cli.command {
         Command::Check {
             require_justification,
+            test_results,
             format,
-        } => run_check(
-            &cli.root,
-            CheckOptions {
+        } => read_test_results(test_results.as_deref()).and_then(|test_results| {
+            let options = CheckOptions {
                 require_justification,
-            },
-            format,
-        ),
+                test_results,
+            };
+            run_check(&cli.root, options, format)
+        }),
         Command::Accept { ids, all } => run_accept(&cli.root, ids, all),
     };
     result.unwrap_or_else(|error| {
         eprintln!("error: {error}");
         ExitCode::from(EXIT_ERROR)
     })
+}
+
+fn read_test_results(path: Option<&Path>) -> emperor::Result<Option<TestResults>> {
+    let Some(path) = path else {
+        return Ok(None);
+    };
+    let xml = std::fs::read_to_string(path).map_err(Error::io(path))?;
+    TestResults::from_junit(&xml)
+        .map(Some)
+        .map_err(Error::parse(path))
 }
 
 /// The requirements, their justifications and the accepted fingerprints.

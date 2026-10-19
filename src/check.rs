@@ -7,11 +7,15 @@ use crate::fingerprint;
 use crate::justification::Justification;
 use crate::lockfile::Fingerprints;
 pub use crate::problem::Problem;
+use crate::rust_source;
+use crate::test_results::{Outcome, TestResults};
 
 #[derive(Debug, Default)]
 pub struct CheckOptions {
     /// Report active requirements that have no justifications at all.
     pub require_justification: bool,
+    /// Require every test justifying a requirement to have passed in these results.
+    pub test_results: Option<TestResults>,
 }
 
 /// Every problem in the tree, in requirement order, followed by problems with tags.
@@ -33,6 +37,11 @@ pub fn check(
             problems.extend(check_justification(tree, locked, &item.uid, justification)?);
         }
         problems.extend(dropped_justifications(locked, &item.uid, &justifications)?);
+        if let Some(results) = &options.test_results {
+            for justification in &justifications {
+                problems.extend(check_test_outcome(tree, results, &item.uid, justification)?);
+            }
+        }
     }
     problems.extend(removed_requirements(tree, locked));
     problems.extend(evidence.problems.iter().cloned());
@@ -66,6 +75,42 @@ fn check_justification(
             justification,
         }),
         Some(_) => None,
+    })
+}
+
+/// A problem when the justification is a test that did not pass.
+fn check_test_outcome(
+    tree: &Tree,
+    results: &TestResults,
+    uid: &str,
+    justification: &Justification,
+) -> Result<Option<Problem>> {
+    let Justification::RustFn { path, item } = justification else {
+        return Ok(None);
+    };
+    let path = tree.root.join(path);
+    let Ok(source) = std::fs::read_to_string(&path) else {
+        return Ok(None); // Reported as missing already.
+    };
+    if !rust_source::is_test_function(&source, item).map_err(Error::parse(&path))? {
+        return Ok(None);
+    }
+    let requirement = uid.to_string();
+    let justification = justification.clone();
+    Ok(match results.outcome(item) {
+        Some(Outcome::Passed) => None,
+        Some(Outcome::Failed) => Some(Problem::TestFailed {
+            requirement,
+            justification,
+        }),
+        Some(Outcome::Skipped) => Some(Problem::TestSkipped {
+            requirement,
+            justification,
+        }),
+        None => Some(Problem::TestNotRun {
+            requirement,
+            justification,
+        }),
     })
 }
 
@@ -130,8 +175,101 @@ mod tests {
     fn requiring_justification(project: &Project) -> Vec<Problem> {
         let options = CheckOptions {
             require_justification: true,
+            ..CheckOptions::default()
         };
         check_with(project, &Fingerprints::new(), options)
+    }
+
+    const LOGIN_TESTS: &str = "#[test]\nfn rejects() {}\nfn helper() {}\n";
+
+    /// REQ001 justified by the test `rejects`, accepted as it is.
+    fn tested_project() -> (Project, Fingerprints) {
+        let mut project = Project::new()
+            .requirement("REQ001", &[])
+            .file("tests/login.rs", LOGIN_TESTS);
+        project.justify_by_rust_fn("REQ001", "tests/login.rs", "rejects");
+        let fingerprint = crate::rust_source::fingerprint_function(LOGIN_TESTS, "rejects")
+            .unwrap()
+            .unwrap();
+        let locked = locked(&[("REQ001", "rust-fn:tests/login.rs::rejects", &fingerprint)]);
+        (project, locked)
+    }
+
+    fn check_test_outcome(
+        project: &Project,
+        locked: &Fingerprints,
+        testcase: &str,
+    ) -> Vec<Problem> {
+        let xml = format!("<testsuites><testsuite>{testcase}</testsuite></testsuites>");
+        let options = CheckOptions {
+            test_results: Some(TestResults::from_junit(&xml).unwrap()),
+            ..CheckOptions::default()
+        };
+        check_with(project, locked, options)
+    }
+
+    fn rejects_test() -> Justification {
+        Justification::RustFn {
+            path: "tests/login.rs".into(),
+            item: "rejects".into(),
+        }
+    }
+
+    #[test]
+    fn a_passing_justifying_test_has_no_problems() {
+        let (project, locked) = tested_project();
+        let testcase = "<testcase name=\"rejects\"/>";
+        assert_eq!(check_test_outcome(&project, &locked, testcase), vec![]);
+    }
+
+    #[test]
+    fn failing_skipped_and_missing_justifying_tests_are_reported() {
+        let (project, locked) = tested_project();
+        let cases = [
+            (
+                "<testcase name=\"rejects\"><failure/></testcase>",
+                Problem::TestFailed {
+                    requirement: "REQ001".into(),
+                    justification: rejects_test(),
+                },
+            ),
+            (
+                "<testcase name=\"rejects\"><skipped/></testcase>",
+                Problem::TestSkipped {
+                    requirement: "REQ001".into(),
+                    justification: rejects_test(),
+                },
+            ),
+            (
+                "",
+                Problem::TestNotRun {
+                    requirement: "REQ001".into(),
+                    justification: rejects_test(),
+                },
+            ),
+        ];
+        for (testcase, problem) in cases {
+            assert_eq!(
+                check_test_outcome(&project, &locked, testcase),
+                vec![problem]
+            );
+        }
+    }
+
+    #[test]
+    fn a_justifying_function_that_is_not_a_test_need_not_be_in_the_results() {
+        let (mut project, _) = tested_project();
+        project.justify_by_rust_fn("REQ001", "tests/login.rs", "helper");
+        let problems = check_test_outcome(
+            &project,
+            &Fingerprints::new(),
+            "<testcase name=\"rejects\"/>",
+        );
+        assert!(
+            problems
+                .iter()
+                .all(|problem| matches!(problem, Problem::Unaccepted { .. }))
+        );
     }
 
     #[test]

@@ -29,6 +29,21 @@ pub enum Problem {
         requirement: String,
         justification: Justification,
     },
+    /// A test justifying the requirement failed.
+    TestFailed {
+        requirement: String,
+        justification: Justification,
+    },
+    /// A test justifying the requirement was skipped.
+    TestSkipped {
+        requirement: String,
+        justification: Justification,
+    },
+    /// A test justifying the requirement is not in the test results.
+    TestNotRun {
+        requirement: String,
+        justification: Justification,
+    },
     /// The requirement has no justifications, and justifications are required.
     Unjustified { requirement: String },
     /// The lockfile has fingerprints for a requirement that no longer exists.
@@ -64,6 +79,9 @@ impl Problem {
             | Problem::Unaccepted { requirement, .. }
             | Problem::Missing { requirement, .. }
             | Problem::Dropped { requirement, .. }
+            | Problem::TestFailed { requirement, .. }
+            | Problem::TestSkipped { requirement, .. }
+            | Problem::TestNotRun { requirement, .. }
             | Problem::Unjustified { requirement }
             | Problem::RequirementRemoved { requirement } => Some(requirement),
             Problem::UnknownRequirement { .. } | Problem::InvalidTag { .. } => None,
@@ -85,7 +103,10 @@ impl Problem {
             Problem::Changed { justification, .. }
             | Problem::Unaccepted { justification, .. }
             | Problem::Missing { justification, .. }
-            | Problem::Dropped { justification, .. } => Some(justification),
+            | Problem::Dropped { justification, .. }
+            | Problem::TestFailed { justification, .. }
+            | Problem::TestSkipped { justification, .. }
+            | Problem::TestNotRun { justification, .. } => Some(justification),
             _ => None,
         }
     }
@@ -101,6 +122,15 @@ impl Problem {
             }
             Problem::Missing { justification, .. } | Problem::Dropped { justification, .. } => {
                 format!("{justification} not found")
+            }
+            Problem::TestFailed { justification, .. } => {
+                format!("test {} failed", test_name(justification))
+            }
+            Problem::TestSkipped { justification, .. } => {
+                format!("test {} was skipped", test_name(justification))
+            }
+            Problem::TestNotRun { justification, .. } => {
+                format!("test {} did not run", test_name(justification))
             }
             Problem::Unjustified { .. } => "has no justifications".to_string(),
             Problem::RequirementRemoved { .. } => "requirement no longer exists".to_string(),
@@ -120,6 +150,14 @@ impl Problem {
                 | Problem::Dropped { .. }
                 | Problem::RequirementRemoved { .. }
         )
+    }
+}
+
+/// How a test justification is named in messages: its module path within its file.
+fn test_name(justification: &Justification) -> String {
+    match justification {
+        Justification::RustFn { item, .. } => item.clone(),
+        other => other.to_string(),
     }
 }
 
@@ -200,6 +238,19 @@ mod tests {
         };
         assert_eq!(dropped.to_string(), "REQ001: file:a.rs not found");
         assert!(dropped.is_resolved_by_accepting());
+    }
+
+    #[test]
+    fn test_problems_name_the_test() {
+        let failed = Problem::TestFailed {
+            requirement: "REQ001".into(),
+            justification: Justification::RustFn {
+                path: "tests/login.rs".into(),
+                item: "rejects".into(),
+            },
+        };
+        assert_eq!(failed.to_string(), "REQ001: test rejects failed");
+        assert!(!failed.is_resolved_by_accepting());
     }
 
     #[test]

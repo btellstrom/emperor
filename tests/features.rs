@@ -391,6 +391,41 @@ fn trailing_newline_appended(world: &mut ProjectWorld, path: String) {
     world.write_file(&path, &format!("{contents}\n"));
 }
 
+// Test results
+
+/// A JUnit report shaped like the one `cargo nextest` writes.
+fn junit_report(testcases: &str) -> String {
+    format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites name=\"nextest-run\">\n  \
+         <testsuite name=\"emperor::login\">\n{testcases}  </testsuite>\n</testsuites>\n"
+    )
+}
+
+fn junit_testcase(test: &str, outcome: &str) -> String {
+    format!("    <testcase name=\"{test}\" classname=\"emperor::login\">{outcome}</testcase>\n")
+}
+
+#[given(expr = "the JUnit report {string} says {string} passed")]
+fn junit_passed(world: &mut ProjectWorld, report: String, test: String) {
+    world.write_file(&report, &junit_report(&junit_testcase(&test, "")));
+}
+
+#[given(expr = "the JUnit report {string} says {string} failed")]
+fn junit_failed(world: &mut ProjectWorld, report: String, test: String) {
+    let failure = "<failure message=\"assertion failed\" type=\"test failure\"/>";
+    world.write_file(&report, &junit_report(&junit_testcase(&test, failure)));
+}
+
+#[given(expr = "the JUnit report {string} says {string} was skipped")]
+fn junit_skipped(world: &mut ProjectWorld, report: String, test: String) {
+    world.write_file(&report, &junit_report(&junit_testcase(&test, "<skipped/>")));
+}
+
+#[given(expr = "the JUnit report {string} contains no tests")]
+fn junit_empty(world: &mut ProjectWorld, report: String) {
+    world.write_file(&report, &junit_report(""));
+}
+
 // Running emperor
 
 #[given(expr = "the justifications of {string} have been accepted")]

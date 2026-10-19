@@ -12,6 +12,7 @@ pub mod problem;
 pub mod report;
 pub mod rust_source;
 pub mod rust_tags;
+pub mod test_results;
 #[cfg(test)]
 mod test_support;
 

@@ -24,6 +24,18 @@ pub fn fingerprint_function(source: &str, path: &str) -> syn::Result<Option<Stri
         .map(|function| sha256(canonical_text(function.to_token_stream()).as_bytes())))
 }
 
+/// Whether the function at `path` is a test, i.e. has an attribute such as `#[test]`
+/// or `#[tokio::test]`.
+pub fn is_test_function(source: &str, path: &str) -> syn::Result<bool> {
+    let file = syn::parse_file(source)?;
+    Ok(find_function(&file.items, path).is_some_and(|function| {
+        function.attrs.iter().any(|attribute| {
+            let name = attribute.path().segments.last();
+            name.is_some_and(|segment| segment.ident == "test")
+        })
+    }))
+}
+
 /// The line the function at `path` starts on, counting its attributes.
 pub fn function_line(source: &str, path: &str) -> syn::Result<Option<usize>> {
     let file = syn::parse_file(source)?;
@@ -164,6 +176,16 @@ mod tests {
             fingerprint(&qualified, "rejects_bad_password"),
             Some(original())
         );
+    }
+
+    #[test]
+    fn recognises_test_functions() {
+        let source =
+            "#[test]\nfn a() {}\n#[tokio::test]\nasync fn b() {}\n#[inline]\nfn helper() {}\n";
+        assert!(is_test_function(source, "a").unwrap());
+        assert!(is_test_function(source, "b").unwrap());
+        assert!(!is_test_function(source, "helper").unwrap());
+        assert!(!is_test_function(source, "missing").unwrap());
     }
 
     #[test]
