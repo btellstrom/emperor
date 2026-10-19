@@ -90,3 +90,12 @@ Feature: Read a Doorstop tree the way Doorstop does
     And the justifications of "REQ001" have been accepted
     When I run "emperor check"
     Then the exit code is 0
+
+  @justifies:SPEC020
+  Scenario: L10 A document whose folder contains .doorstop.skip is not checked
+    Given a Doorstop document "REQ" with no parent
+    And a Doorstop document "TMP" with parent "REQ"
+    And the folder "tmp" contains a ".doorstop.skip" file
+    And requirement "TMP001" referencing file "tests/tmp.rs"
+    When I run "emperor check"
+    Then the exit code is 0
