@@ -22,7 +22,7 @@ pub fn of(root: &Path, justification: &Justification) -> Result<Option<String>> 
             let Some(contents) = read_if_present(&path)? else {
                 return Ok(None);
             };
-            let source = String::from_utf8_lossy(&contents);
+            let source = String::from_utf8(contents).map_err(Error::parse(&path))?;
             rust_source::fingerprint_function(&source, item).map_err(Error::parse(&path))
         }
     }

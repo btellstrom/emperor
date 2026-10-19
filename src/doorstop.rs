@@ -48,9 +48,9 @@ impl Document {
     }
 }
 
-/// An entry of Doorstop's `references` or emperor's `justified_by` attribute.
+/// A justification named in Doorstop's `references` or emperor's `justified_by` attribute.
 #[derive(Debug, Clone, Deserialize)]
-pub struct Entry {
+pub struct Reference {
     #[serde(rename = "type")]
     pub kind: String,
     pub path: String,
@@ -59,9 +59,9 @@ pub struct Entry {
 }
 
 #[cfg(test)]
-impl Entry {
-    pub fn new(kind: &str, path: &str, item: Option<&str>) -> Entry {
-        Entry {
+impl Reference {
+    pub fn new(kind: &str, path: &str, item: Option<&str>) -> Reference {
+        Reference {
             kind: kind.to_string(),
             path: path.to_string(),
             item: item.map(str::to_string),
@@ -73,8 +73,8 @@ impl Entry {
 struct ItemFile {
     #[serde(default = "default_active")]
     active: bool,
-    references: Option<Vec<Entry>>,
-    justified_by: Option<Vec<Entry>>,
+    references: Option<Vec<Reference>>,
+    justified_by: Option<Vec<Reference>>,
 }
 
 fn default_active() -> bool {
@@ -86,9 +86,9 @@ pub struct Item {
     pub uid: String,
     pub active: bool,
     /// Doorstop's own `references` attribute.
-    pub references: Vec<Entry>,
+    pub references: Vec<Reference>,
     /// The custom `justified_by` attribute.
-    pub justified_by: Vec<Entry>,
+    pub justified_by: Vec<Reference>,
 }
 
 #[derive(Debug)]

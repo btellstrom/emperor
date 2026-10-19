@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::doorstop::{Entry, Item};
+use crate::doorstop::{Item, Reference};
 use crate::error::{Error, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -34,22 +34,22 @@ pub fn of_item(item: &Item) -> Result<Vec<Justification>> {
     item.references
         .iter()
         .chain(&item.justified_by)
-        .map(|entry| from_entry(&item.uid, entry))
+        .map(|reference| from_reference(&item.uid, reference))
         .collect()
 }
 
-fn from_entry(uid: &str, entry: &Entry) -> Result<Justification> {
-    let path = entry.path.clone();
-    match entry.kind.as_str() {
+fn from_reference(uid: &str, reference: &Reference) -> Result<Justification> {
+    let path = reference.path.clone();
+    match reference.kind.as_str() {
         "file" => Ok(Justification::File { path }),
-        "rust-fn" => match &entry.item {
+        "rust-fn" => match &reference.item {
             Some(item) => Ok(Justification::RustFn {
                 path,
                 item: item.clone(),
             }),
             None => Err(Error::IncompleteJustification {
                 requirement: uid.to_string(),
-                kind: entry.kind.clone(),
+                kind: reference.kind.clone(),
             }),
         },
         kind => Err(Error::UnknownJustificationType {
@@ -63,7 +63,7 @@ fn from_entry(uid: &str, entry: &Entry) -> Result<Justification> {
 mod tests {
     use super::*;
 
-    fn item(references: Vec<Entry>, justified_by: Vec<Entry>) -> Item {
+    fn item(references: Vec<Reference>, justified_by: Vec<Reference>) -> Item {
         Item {
             uid: "REQ001".to_string(),
             active: true,
@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn a_reference_is_a_file_justification() {
-        let item = item(vec![Entry::new("file", "a.md", None)], vec![]);
+        let item = item(vec![Reference::new("file", "a.md", None)], vec![]);
         assert_eq!(
             of_item(&item).unwrap(),
             [Justification::File {
@@ -88,8 +88,8 @@ mod tests {
         let item = item(
             vec![],
             vec![
-                Entry::new("rust-fn", "tests/login.rs", Some("rejects")),
-                Entry::new("file", "b.md", None),
+                Reference::new("rust-fn", "tests/login.rs", Some("rejects")),
+                Reference::new("file", "b.md", None),
             ],
         );
         assert_eq!(
@@ -108,7 +108,10 @@ mod tests {
 
     #[test]
     fn an_unknown_type_is_an_error() {
-        let item = item(vec![], vec![Entry::new("python-fn", "t.py", Some("test"))]);
+        let item = item(
+            vec![],
+            vec![Reference::new("python-fn", "t.py", Some("test"))],
+        );
         let error = of_item(&item).unwrap_err();
         assert_eq!(
             error.to_string(),
@@ -118,7 +121,10 @@ mod tests {
 
     #[test]
     fn a_rust_function_without_an_item_is_an_error() {
-        let item = item(vec![], vec![Entry::new("rust-fn", "tests/login.rs", None)]);
+        let item = item(
+            vec![],
+            vec![Reference::new("rust-fn", "tests/login.rs", None)],
+        );
         assert!(matches!(
             of_item(&item).unwrap_err(),
             Error::IncompleteJustification { .. }

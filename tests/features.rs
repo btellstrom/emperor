@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use cucumber::gherkin::Step;
@@ -111,14 +111,11 @@ impl ProjectWorld {
     }
 
     fn emperor(&self, args: &[&str]) -> std::process::Output {
-        Command::new(env!("CARGO_BIN_EXE_emperor"))
-            .args(args)
-            .current_dir(self.project.path())
-            .output()
-            .expect("run emperor")
+        emperor_in(self.project.path(), args)
     }
 
-    fn run(&mut self, command: &str) {
+    /// Runs a command line such as `emperor check` in `dir` and records its outcome.
+    fn run_in(&mut self, dir: &Path, command: &str) {
         let mut words = command.split_whitespace();
         assert_eq!(
             words.next(),
@@ -126,8 +123,13 @@ impl ProjectWorld {
             "only emperor commands are supported"
         );
         let args: Vec<&str> = words.collect();
-        let output = self.emperor(&args);
+        let output = emperor_in(dir, &args);
         self.record(output);
+    }
+
+    fn run(&mut self, command: &str) {
+        let project = self.project.path().to_path_buf();
+        self.run_in(&project, command);
     }
 
     fn record(&mut self, output: std::process::Output) {
@@ -181,6 +183,14 @@ impl ProjectWorld {
             self.write_file(relative, &format!("contents of {relative}\n"));
         }
     }
+}
+
+fn emperor_in(dir: &Path, args: &[&str]) -> std::process::Output {
+    Command::new(env!("CARGO_BIN_EXE_emperor"))
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .expect("run emperor")
 }
 
 fn create_document(
@@ -382,15 +392,7 @@ fn justifications_accepted(world: &mut ProjectWorld, uid: String) {
 fn run_from_another_folder(world: &mut ProjectWorld, command: String) {
     let project = world.project.path().display().to_string();
     let elsewhere = TempDir::new().unwrap();
-    let command = command.replace("<project>", &project);
-    let mut words = command.split_whitespace().skip(1);
-    let args: Vec<&str> = words.by_ref().collect();
-    let output = Command::new(env!("CARGO_BIN_EXE_emperor"))
-        .args(&args)
-        .current_dir(elsewhere.path())
-        .output()
-        .expect("run emperor");
-    world.record(output);
+    world.run_in(elsewhere.path(), &command.replace("<project>", &project));
 }
 
 #[when(expr = "I run {string}")]

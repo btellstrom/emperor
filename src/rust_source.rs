@@ -3,6 +3,8 @@
 //! Tokens leave out whitespace and comments, so reformatting or commenting a function
 //! keeps its fingerprint, while any change to its code or attributes does not.
 
+use std::fmt::Write;
+
 use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
 use quote::ToTokens;
 use syn::{Item, ItemFn};
@@ -66,8 +68,8 @@ fn write_canonical(tokens: TokenStream, text: &mut String) {
                     text.push(' ');
                 }
             }
-            TokenTree::Ident(ident) => text.push_str(&format!("{ident} ")),
-            TokenTree::Literal(literal) => text.push_str(&format!("{literal} ")),
+            TokenTree::Ident(ident) => write!(text, "{ident} ").expect("writing to a String"),
+            TokenTree::Literal(literal) => write!(text, "{literal} ").expect("writing to a String"),
         }
     }
 }

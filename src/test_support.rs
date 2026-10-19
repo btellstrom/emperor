@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use tempfile::TempDir;
 
-use crate::doorstop::{Entry, Item, Tree};
+use crate::doorstop::{Item, Reference, Tree};
 use crate::fingerprint;
 use crate::justification::Justification;
 use crate::lockfile::Fingerprints;
@@ -35,7 +35,7 @@ impl Project {
             active: true,
             references: files
                 .iter()
-                .map(|file| Entry::new("file", file, None))
+                .map(|file| Reference::new("file", file, None))
                 .collect(),
             justified_by: Vec::new(),
         };
