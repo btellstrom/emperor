@@ -222,9 +222,9 @@ fn document_without_parent(world: &mut ProjectWorld, prefix: String) {
     create_document(world, prefix.clone(), &prefix.to_lowercase(), None, "yaml");
 }
 
-#[given(expr = "a Doorstop document {string} with no parent in folder {string}")]
-fn document_in_folder(world: &mut ProjectWorld, prefix: String, folder: String) {
-    create_document(world, prefix, &folder, None, "yaml");
+#[given(expr = "a Doorstop document {string} with parent {string} in folder {string}")]
+fn document_in_folder(world: &mut ProjectWorld, prefix: String, parent: String, folder: String) {
+    create_document(world, prefix, &folder, Some(&parent), "yaml");
 }
 
 #[given(expr = "the folder {string} contains a {string} file")]
