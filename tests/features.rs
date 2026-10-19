@@ -5,6 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
+use cucumber::gherkin::Step;
 use cucumber::{World, given, then, when};
 use tempfile::TempDir;
 
@@ -159,13 +160,21 @@ impl ProjectWorld {
     }
 }
 
-fn create_document(world: &mut ProjectWorld, prefix: String, item_format: &str) {
+fn create_document(
+    world: &mut ProjectWorld,
+    prefix: String,
+    parent: Option<&str>,
+    item_format: &str,
+) {
     let dir = world.path(&prefix.to_lowercase());
     fs::create_dir_all(&dir).unwrap();
+    let parent = parent
+        .map(|parent| format!("  parent: {parent}\n"))
+        .unwrap_or_default();
     fs::write(
         dir.join(".doorstop.yml"),
         format!(
-            "settings:\n  digits: 3\n  itemformat: {item_format}\n  prefix: {prefix}\n  sep: ''\n"
+            "settings:\n  digits: 3\n  itemformat: {item_format}\n{parent}  prefix: {prefix}\n  sep: ''\n"
         ),
     )
     .unwrap();
@@ -176,12 +185,28 @@ fn create_document(world: &mut ProjectWorld, prefix: String, item_format: &str) 
 
 #[given(expr = "a Doorstop document {string} with no parent")]
 fn document_without_parent(world: &mut ProjectWorld, prefix: String) {
-    create_document(world, prefix, "yaml");
+    create_document(world, prefix, None, "yaml");
 }
+
+#[given(expr = "a Doorstop document {string} with parent {string}")]
+fn document_with_parent(world: &mut ProjectWorld, prefix: String, parent: String) {
+    create_document(world, prefix, Some(&parent), "yaml");
+}
+
+#[given(expr = "the document {string} includes {string} in its reviewed attributes")]
+fn document_reviews_attribute(world: &mut ProjectWorld, prefix: String, attribute: String) {
+    let config = world.documents[&prefix].join(".doorstop.yml");
+    let settings = fs::read_to_string(&config).unwrap();
+    let attributes = format!("attributes:\n  reviewed:\n  - {attribute}\n");
+    fs::write(config, settings + &attributes).unwrap();
+}
+
+#[given("an empty project")]
+fn empty_project(_world: &mut ProjectWorld) {}
 
 #[given(expr = "a Doorstop document {string} with no parent and item format {string}")]
 fn document_with_item_format(world: &mut ProjectWorld, prefix: String, item_format: String) {
-    create_document(world, prefix, &item_format);
+    create_document(world, prefix, None, &item_format);
 }
 
 #[given(expr = "requirement {string} referencing file {string}")]
@@ -204,6 +229,11 @@ fn reference_removed(world: &mut ProjectWorld, path: String, uid: String) {
     });
 }
 
+#[given(expr = "requirement {string} is linked to {string} and {string}")]
+fn requirement_linked_to_two(world: &mut ProjectWorld, uid: String, first: String, second: String) {
+    world.update_item(&uid, |item| item.links.extend([first, second]));
+}
+
 #[given(expr = "requirement {string} is inactive")]
 fn requirement_is_inactive(world: &mut ProjectWorld, uid: String) {
     world.update_item(&uid, |item| item.active = false);
@@ -217,6 +247,13 @@ fn requirement_is_deleted(world: &mut ProjectWorld, uid: String) {
 }
 
 // Files
+
+#[given(expr = "the file {string} contains:")]
+#[when(expr = "the file {string} contains:")]
+fn file_contains(world: &mut ProjectWorld, path: String, step: &Step) {
+    let contents = step.docstring.as_ref().expect("the step has a doc string");
+    world.write_file(&path, contents.strip_prefix('\n').unwrap_or(contents));
+}
 
 #[given(expr = "{string} is modified")]
 #[when(expr = "{string} is modified")]
@@ -250,6 +287,23 @@ fn justifications_accepted(world: &mut ProjectWorld, uid: String) {
     world.accepted_lockfile = world.lockfile();
 }
 
+#[when(expr = "I run {string} from another folder")]
+fn run_from_another_folder(world: &mut ProjectWorld, command: String) {
+    let project = world.project.path().display().to_string();
+    let elsewhere = TempDir::new().unwrap();
+    let command = command.replace("<project>", &project);
+    let mut words = command.split_whitespace().skip(1);
+    let args: Vec<&str> = words.by_ref().collect();
+    let output = Command::new(env!("CARGO_BIN_EXE_emperor"))
+        .args(&args)
+        .current_dir(elsewhere.path())
+        .output()
+        .expect("run emperor");
+    world.exit_code = output.status.code();
+    world.stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+    world.stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+}
+
 #[when(expr = "I run {string}")]
 fn run(world: &mut ProjectWorld, command: String) {
     world.run(&command);
@@ -275,6 +329,16 @@ fn output_contains(world: &mut ProjectWorld, expected: String) {
     assert!(
         world.stdout.contains(&expected),
         "expected output to contain {expected:?}, got {:?}",
+        world.stdout
+    );
+}
+
+#[then(expr = "the output contains {string} exactly once")]
+fn output_contains_once(world: &mut ProjectWorld, expected: String) {
+    assert_eq!(
+        world.stdout.matches(&expected).count(),
+        1,
+        "{:?}",
         world.stdout
     );
 }

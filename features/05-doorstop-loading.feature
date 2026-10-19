@@ -1,13 +1,13 @@
 Feature: Read a Doorstop tree the way Doorstop does
 
-  @pending @justifies:SPEC016 @justifies:SPEC022
+  @justifies:SPEC016 @justifies:SPEC022
   Scenario: L1 No Doorstop tree is an error
     Given an empty project
     When I run "emperor check"
     Then the exit code is 2
     And the error output contains "no Doorstop documents found"
 
-  @pending @justifies:SPEC020
+  @justifies:SPEC020
   Scenario: L2 Items in child documents are checked
     Given a Doorstop document "SYS" with no parent
     And a Doorstop document "REQ" with parent "SYS"
@@ -15,7 +15,7 @@ Feature: Read a Doorstop tree the way Doorstop does
     When I run "emperor check"
     Then the output contains "REQ001: file:tests/login.rs has not been accepted"
 
-  @pending @justifies:SPEC020
+  @justifies:SPEC020
   Scenario: L3 An item with two parents is checked once
     Given a Doorstop document "SYS" with no parent
     And a Doorstop document "REQ" with parent "SYS"
@@ -37,7 +37,7 @@ Feature: Read a Doorstop tree the way Doorstop does
     When I run "emperor check"
     Then the output does not contain "TMP001"
 
-  @pending @justifies:SPEC021
+  @justifies:SPEC021
   Scenario: L5 Link fingerprints written by Doorstop are understood
     # Doorstop writes links as either "- REQ001" or "- REQ001: <fingerprint>".
     Given a Doorstop document "SYS" with no parent
@@ -62,7 +62,7 @@ Feature: Read a Doorstop tree the way Doorstop does
     Then the exit code is 2
     And the error output contains "REQ: Markdown items are not supported"
 
-  @pending @justifies:SPEC022
+  @justifies:SPEC022
   Scenario: L7 An invalid item file is an error naming the file
     Given a Doorstop document "REQ" with no parent
     And the file "req/REQ001.yml" contains:
@@ -73,14 +73,14 @@ Feature: Read a Doorstop tree the way Doorstop does
     Then the exit code is 2
     And the error output contains "req/REQ001.yml"
 
-  @pending @justifies:SPEC023
+  @justifies:SPEC023
   Scenario: L8 The project root can be given explicitly
     Given a Doorstop document "REQ" with no parent
     And requirement "REQ001" referencing file "tests/login.rs"
     When I run "emperor --root <project> check" from another folder
     Then the output contains "REQ001: file:tests/login.rs has not been accepted"
 
-  @pending @justifies:SPEC021
+  @justifies:SPEC021
   Scenario: L9 A document that adds justified_by to Doorstop's review stamp loads
     # The configuration recommended in the README.
     Given a Doorstop document "REQ" with no parent
