@@ -11,7 +11,7 @@ Feature: Link Gherkin scenarios to requirements with tags
     And requirement "REQ001" without justifications
     And requirement "REQ002" without justifications
 
-  @pending @justifies:SPEC025
+  @justifies:SPEC025
   Scenario: H1 A tagged scenario becomes a justification
     Given the file "features/login.feature" contains:
       """
@@ -26,7 +26,7 @@ Feature: Link Gherkin scenarios to requirements with tags
     Then the exit code is 1
     And the output contains "REQ001: gherkin:features/login.feature::A wrong password is rejected has not been accepted"
 
-  @pending @justifies:SPEC026
+  @justifies:SPEC026
   Scenario: H2 Changing a step fails
     Given the file "features/login.feature" contains:
       """
@@ -43,7 +43,7 @@ Feature: Link Gherkin scenarios to requirements with tags
     Then the exit code is 1
     And the output contains "REQ001: gherkin:features/login.feature::A wrong password is rejected changed since it was accepted"
 
-  @pending @justifies:SPEC026
+  @justifies:SPEC026
   Scenario: H3 Changing a doc string or data table fails
     Given the file "features/login.feature" contains:
       """
@@ -60,7 +60,7 @@ Feature: Link Gherkin scenarios to requirements with tags
     And I run "emperor check"
     Then the exit code is 1
 
-  @pending @justifies:SPEC026
+  @justifies:SPEC026
   Scenario: H4 Changing the Background fails
     Given the file "features/login.feature" contains:
       """
@@ -79,7 +79,7 @@ Feature: Link Gherkin scenarios to requirements with tags
     And I run "emperor check"
     Then the exit code is 1
 
-  @pending @justifies:SPEC026
+  @justifies:SPEC026
   Scenario: H5 Changing the Examples of a Scenario Outline fails
     Given the file "features/login.feature" contains:
       """
@@ -99,7 +99,7 @@ Feature: Link Gherkin scenarios to requirements with tags
     And I run "emperor check"
     Then the exit code is 1
 
-  @pending @justifies:SPEC026
+  @justifies:SPEC026
   Scenario: H6 Comments, whitespace and other tags do not count
     Given the file "features/login.feature" contains:
       """
@@ -124,7 +124,7 @@ Feature: Link Gherkin scenarios to requirements with tags
     And I run "emperor check"
     Then the exit code is 0
 
-  @pending @justifies:SPEC028
+  @justifies:SPEC028
   Scenario: H7 Adding a requirement tag does not invalidate the others
     Given the file "features/login.feature" contains:
       """
@@ -141,7 +141,7 @@ Feature: Link Gherkin scenarios to requirements with tags
     Then the output does not contain "REQ001"
     And the output contains "REQ002: gherkin:features/login.feature::A wrong password is rejected has not been accepted"
 
-  @pending @justifies:SPEC025
+  @justifies:SPEC025
   Scenario: H8 A tag on the Feature applies to every scenario
     Given the file "features/login.feature" contains:
       """
@@ -158,7 +158,7 @@ Feature: Link Gherkin scenarios to requirements with tags
     Then the output contains "REQ001: gherkin:features/login.feature::A wrong password is rejected has not been accepted"
     And the output contains "REQ001: gherkin:features/login.feature::A right password is accepted has not been accepted"
 
-  @pending @justifies:SPEC029
+  @justifies:SPEC029
   Scenario: H9 A tag naming an unknown requirement fails
     Given the file "features/login.feature" contains:
       """
@@ -172,7 +172,7 @@ Feature: Link Gherkin scenarios to requirements with tags
     Then the exit code is 1
     And the output contains "features/login.feature:3: unknown requirement REQ999"
 
-  @pending @justifies:SPEC027
+  @justifies:SPEC027
   Scenario: H10 A renamed scenario is reported as not found
     Given the file "features/login.feature" contains:
       """
@@ -189,7 +189,7 @@ Feature: Link Gherkin scenarios to requirements with tags
     And the output contains "REQ001: gherkin:features/login.feature::A wrong password is rejected not found"
     And the output contains "REQ001: gherkin:features/login.feature::Wrong passwords are rejected has not been accepted"
 
-  @pending @justifies:SPEC027
+  @justifies:SPEC027
   Scenario: H11 Two scenarios with the same name in one file is an error
     # The name identifies the scenario, so it must be unique within its file.
     Given the file "features/login.feature" contains:
@@ -207,7 +207,7 @@ Feature: Link Gherkin scenarios to requirements with tags
     Then the exit code is 2
     And the error output contains "features/login.feature: duplicate scenario name \"Rejected\""
 
-  @pending @justifies:SPEC015
+  @justifies:SPEC015
   Scenario: H12 A feature file that does not parse is an error
     Given the file "features/login.feature" contains:
       """
@@ -218,7 +218,7 @@ Feature: Link Gherkin scenarios to requirements with tags
     Then the exit code is 2
     And the error output contains "features/login.feature"
 
-  @pending @justifies:SPEC030
+  @justifies:SPEC030
   Scenario: H13 Ignored feature files are not scanned
     Given the file ".gitignore" contains:
       """

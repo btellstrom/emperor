@@ -8,7 +8,7 @@ use sha2::{Digest, Sha256};
 
 use crate::error::{Error, Result};
 use crate::justification::Justification;
-use crate::rust_source;
+use crate::{gherkin_source, rust_source};
 
 /// The fingerprint of a justification, or `None` when it cannot be found.
 pub fn of(root: &Path, justification: &Justification) -> Result<Option<String>> {
@@ -24,6 +24,15 @@ pub fn of(root: &Path, justification: &Justification) -> Result<Option<String>> 
             };
             let source = String::from_utf8(contents).map_err(Error::parse(&path))?;
             rust_source::fingerprint_function(&source, item).map_err(Error::parse(&path))
+        }
+        Justification::Gherkin { path, scenario } => {
+            let path = root.join(path);
+            let Some(contents) = read_if_present(&path)? else {
+                return Ok(None);
+            };
+            let source = String::from_utf8(contents).map_err(Error::parse(&path))?;
+            let feature = gherkin_source::parse(&source).map_err(Error::parse(&path))?;
+            Ok(gherkin_source::fingerprint_scenario(&feature, scenario))
         }
     }
 }

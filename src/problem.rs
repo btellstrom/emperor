@@ -24,6 +24,11 @@ pub enum Problem {
         requirement: String,
         justification: Justification,
     },
+    /// An accepted justification the requirement no longer has, e.g. a renamed scenario.
+    Dropped {
+        requirement: String,
+        justification: Justification,
+    },
     /// The requirement has no justifications, and justifications are required.
     Unjustified { requirement: String },
     /// The lockfile has fingerprints for a requirement that no longer exists.
@@ -58,6 +63,7 @@ impl Problem {
             Problem::Changed { requirement, .. }
             | Problem::Unaccepted { requirement, .. }
             | Problem::Missing { requirement, .. }
+            | Problem::Dropped { requirement, .. }
             | Problem::Unjustified { requirement }
             | Problem::RequirementRemoved { requirement } => Some(requirement),
             Problem::UnknownRequirement { .. } | Problem::InvalidTag { .. } => None,
@@ -78,7 +84,8 @@ impl Problem {
         match self {
             Problem::Changed { justification, .. }
             | Problem::Unaccepted { justification, .. }
-            | Problem::Missing { justification, .. } => Some(justification),
+            | Problem::Missing { justification, .. }
+            | Problem::Dropped { justification, .. } => Some(justification),
             _ => None,
         }
     }
@@ -92,7 +99,9 @@ impl Problem {
             Problem::Unaccepted { justification, .. } => {
                 format!("{justification} has not been accepted")
             }
-            Problem::Missing { justification, .. } => format!("{justification} not found"),
+            Problem::Missing { justification, .. } | Problem::Dropped { justification, .. } => {
+                format!("{justification} not found")
+            }
             Problem::Unjustified { .. } => "has no justifications".to_string(),
             Problem::RequirementRemoved { .. } => "requirement no longer exists".to_string(),
             Problem::UnknownRequirement { requirement, .. } => {
@@ -108,6 +117,7 @@ impl Problem {
             self,
             Problem::Changed { .. }
                 | Problem::Unaccepted { .. }
+                | Problem::Dropped { .. }
                 | Problem::RequirementRemoved { .. }
         )
     }
@@ -180,6 +190,16 @@ mod tests {
         assert_eq!(unknown.requirement(), None);
         assert_eq!(unknown.location(), Some(&location("tests/login.rs", 2)));
         assert!(!unknown.is_resolved_by_accepting());
+    }
+
+    #[test]
+    fn a_dropped_justification_is_no_longer_found_and_accepting_forgets_it() {
+        let dropped = Problem::Dropped {
+            requirement: "REQ001".into(),
+            justification: file("a.rs"),
+        };
+        assert_eq!(dropped.to_string(), "REQ001: file:a.rs not found");
+        assert!(dropped.is_resolved_by_accepting());
     }
 
     #[test]

@@ -14,6 +14,8 @@ pub enum Justification {
     File { path: String },
     /// A Rust function, compared by its tokens.
     RustFn { path: String, item: String },
+    /// A Gherkin scenario, compared by its steps.
+    Gherkin { path: String, scenario: String },
 }
 
 impl fmt::Display for Justification {
@@ -21,6 +23,7 @@ impl fmt::Display for Justification {
         match self {
             Justification::File { path } => write!(f, "file:{path}"),
             Justification::RustFn { path, item } => write!(f, "rust-fn:{path}::{item}"),
+            Justification::Gherkin { path, scenario } => write!(f, "gherkin:{path}::{scenario}"),
         }
     }
 }
@@ -29,13 +32,41 @@ impl Justification {
     /// The file the justification is in, relative to the project root.
     pub fn path(&self) -> &str {
         match self {
-            Justification::File { path } | Justification::RustFn { path, .. } => path,
+            Justification::File { path }
+            | Justification::RustFn { path, .. }
+            | Justification::Gherkin { path, .. } => path,
         }
     }
 
     /// Identifies the justification in the lockfile.
     pub fn key(&self) -> String {
         self.to_string()
+    }
+
+    /// The justification a lockfile key identifies, or `None` for an unknown kind.
+    ///
+    /// Paths never contain `::`, so the first `::` ends the path.
+    pub fn from_key(key: &str) -> Option<Justification> {
+        let (kind, rest) = key.split_once(':')?;
+        let path = |path: &str| path.to_string();
+        match kind {
+            "file" => Some(Justification::File { path: path(rest) }),
+            "rust-fn" => {
+                let (file, item) = rest.split_once("::")?;
+                Some(Justification::RustFn {
+                    path: path(file),
+                    item: item.to_string(),
+                })
+            }
+            "gherkin" => {
+                let (file, scenario) = rest.split_once("::")?;
+                Some(Justification::Gherkin {
+                    path: path(file),
+                    scenario: scenario.to_string(),
+                })
+            }
+            _ => None,
+        }
     }
 }
 
@@ -139,6 +170,30 @@ mod tests {
             of_item(&item).unwrap_err(),
             Error::IncompleteJustification { .. }
         ));
+    }
+
+    #[test]
+    fn a_key_identifies_its_justification() {
+        let justifications = [
+            Justification::File {
+                path: "docs/a.md".into(),
+            },
+            Justification::RustFn {
+                path: "src/auth.rs".into(),
+                item: "tests::hashes".into(),
+            },
+            Justification::Gherkin {
+                path: "features/login.feature".into(),
+                scenario: "A: tricky :: name".into(),
+            },
+        ];
+        for justification in justifications {
+            assert_eq!(
+                Justification::from_key(&justification.key()),
+                Some(justification)
+            );
+        }
+        assert_eq!(Justification::from_key("unknown:thing"), None);
     }
 
     #[test]

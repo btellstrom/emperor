@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::justification::Justification;
-use crate::rust_source;
+use crate::{gherkin_source, rust_source};
 
 /// The line a justification starts on. Best effort: `None` when it has no line or
 /// cannot be read, since a missing line only makes an annotation less precise.
@@ -14,6 +14,11 @@ pub fn line_of(root: &Path, justification: &Justification) -> Option<usize> {
         Justification::RustFn { path, item } => {
             let source = fs::read_to_string(root.join(path)).ok()?;
             rust_source::function_line(&source, item).ok().flatten()
+        }
+        Justification::Gherkin { path, scenario } => {
+            let source = fs::read_to_string(root.join(path)).ok()?;
+            let feature = gherkin_source::parse(&source).ok()?;
+            gherkin_source::scenario_line(&feature, scenario)
         }
     }
 }

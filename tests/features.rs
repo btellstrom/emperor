@@ -433,6 +433,7 @@ fn exit_code_is(world: &mut ProjectWorld, expected: i32) {
 
 #[then(expr = "the output contains {string}")]
 fn output_contains(world: &mut ProjectWorld, expected: String) {
+    let expected = unescape(&expected);
     assert!(
         world.stdout.contains(&expected),
         "expected output to contain {expected:?}, got {:?}",
@@ -457,6 +458,7 @@ fn output_is_json(world: &mut ProjectWorld, step: &Step) {
 
 #[then(expr = "the output contains {string} exactly once")]
 fn output_contains_once(world: &mut ProjectWorld, expected: String) {
+    let expected = unescape(&expected);
     assert_eq!(
         world.stdout.matches(&expected).count(),
         1,
@@ -467,6 +469,7 @@ fn output_contains_once(world: &mut ProjectWorld, expected: String) {
 
 #[then(expr = "the output does not contain {string}")]
 fn output_lacks(world: &mut ProjectWorld, unexpected: String) {
+    let unexpected = unescape(&unexpected);
     assert!(
         !world.stdout.contains(&unexpected),
         "expected output not to contain {unexpected:?}, got {:?}",
@@ -476,6 +479,7 @@ fn output_lacks(world: &mut ProjectWorld, unexpected: String) {
 
 #[then(expr = "the error output contains {string}")]
 fn error_output_contains(world: &mut ProjectWorld, expected: String) {
+    let expected = unescape(&expected);
     assert!(
         world.stderr.contains(&expected),
         "expected error output to contain {expected:?}, got {:?}",

@@ -4,6 +4,7 @@ pub mod doorstop;
 pub mod error;
 pub mod evidence;
 pub mod fingerprint;
+pub mod gherkin_source;
 pub mod justification;
 pub mod locate;
 pub mod lockfile;

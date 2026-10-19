@@ -336,6 +336,7 @@ dependencies = [
  "clap",
  "cucumber",
  "futures",
+ "gherkin",
  "ignore",
  "proc-macro2",
  "quote",

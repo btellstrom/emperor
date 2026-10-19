@@ -1,7 +1,7 @@
 //! Compares the current justifications with the fingerprints accepted in the lockfile.
 
 use crate::doorstop::Tree;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::evidence::Evidence;
 use crate::fingerprint;
 use crate::justification::Justification;
@@ -29,14 +29,15 @@ pub fn check(
                 requirement: item.uid.clone(),
             });
         }
-        for justification in justifications {
+        for justification in &justifications {
             problems.extend(check_justification(
                 tree,
                 locked,
                 &item.uid,
-                justification.clone(),
+                (*justification).clone(),
             )?);
         }
+        problems.extend(dropped_justifications(locked, &item.uid, &justifications)?);
     }
     problems.extend(removed_requirements(tree, locked));
     problems.extend(evidence.problems.iter().cloned());
@@ -70,6 +71,34 @@ fn check_justification(
         }),
         Some(_) => None,
     })
+}
+
+/// Accepted justifications the requirement no longer has.
+fn dropped_justifications(
+    locked: &Fingerprints,
+    uid: &str,
+    current: &[&Justification],
+) -> Result<Vec<Problem>> {
+    let accepted_keys = locked
+        .get(uid)
+        .into_iter()
+        .flat_map(|fingerprints| fingerprints.keys());
+    let mut dropped = Vec::new();
+    for key in accepted_keys {
+        if current
+            .iter()
+            .any(|justification| justification.key() == *key)
+        {
+            continue;
+        }
+        let justification =
+            Justification::from_key(key).ok_or_else(|| Error::UnknownLockfileKey(key.clone()))?;
+        dropped.push(Problem::Dropped {
+            requirement: uid.to_string(),
+            justification,
+        });
+    }
+    Ok(dropped)
 }
 
 fn removed_requirements<'a>(
@@ -233,6 +262,26 @@ mod tests {
             &problems[..],
             [Problem::UnknownRequirement { .. }]
         ));
+    }
+
+    #[test]
+    fn an_accepted_justification_the_requirement_no_longer_has_is_reported() {
+        let project = Project::new().requirement("REQ001", &[]);
+        let locked = locked(&[(
+            "REQ001",
+            "gherkin:features/a.feature::Old name",
+            "sha256:old",
+        )]);
+        assert_eq!(
+            check_project(&project, &locked),
+            vec![Problem::Dropped {
+                requirement: "REQ001".into(),
+                justification: Justification::Gherkin {
+                    path: "features/a.feature".into(),
+                    scenario: "Old name".into()
+                }
+            }]
+        );
     }
 
     #[test]

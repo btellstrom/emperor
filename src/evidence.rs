@@ -9,6 +9,7 @@ use ignore::WalkBuilder;
 
 use crate::doorstop::Tree;
 use crate::error::{Error, Result, read_to_string};
+use crate::gherkin_source::{self, ScenarioTag};
 use crate::justification::{self, Justification};
 use crate::problem::{Location, Problem};
 use crate::rust_tags::{self, JUSTIFIES, Tag, TagKind};
@@ -74,6 +75,24 @@ impl Evidence {
         }
     }
 
+    fn add_scenario_tag(&mut self, tree: &Tree, path: &str, tag: ScenarioTag) {
+        if tree.items.contains_key(&tag.requirement) {
+            let justification = Justification::Gherkin {
+                path: path.to_string(),
+                scenario: tag.scenario,
+            };
+            self.add(&tag.requirement, justification);
+        } else {
+            self.problems.push(Problem::UnknownRequirement {
+                requirement: tag.requirement,
+                location: Location {
+                    path: path.to_string(),
+                    line: tag.line,
+                },
+            });
+        }
+    }
+
     fn add_invalid_tag(&mut self, location: Location, reason: &str) {
         self.problems.push(Problem::InvalidTag {
             location,
@@ -99,6 +118,17 @@ pub fn gather(tree: &Tree) -> Result<Evidence> {
         let relative = relative_path(&tree.root, &path);
         for tag in tags {
             evidence.add_tag(tree, &relative, tag);
+        }
+    }
+    for path in project_files(&tree.root, "feature")? {
+        let source = read_to_string(&path)?;
+        let feature = gherkin_source::parse(&source).map_err(Error::parse(&path))?;
+        if let Some(name) = gherkin_source::duplicate_tagged_name(&feature) {
+            return Err(Error::DuplicateScenario { path, name });
+        }
+        let relative = relative_path(&tree.root, &path);
+        for tag in gherkin_source::justifies_tags(&feature, &source) {
+            evidence.add_scenario_tag(tree, &relative, tag);
         }
     }
     Ok(evidence)
@@ -225,6 +255,57 @@ mod tests {
                 }
             ]
         );
+    }
+
+    const LOGIN_FEATURE: &str = "Feature: Login\n\n  @justifies:REQ001\n  Scenario: Rejected\n    Then the login is rejected\n";
+
+    #[test]
+    fn a_tagged_scenario_justifies_the_requirement_it_names() {
+        let project = Project::new()
+            .requirement("REQ001", &[])
+            .file("features/login.feature", LOGIN_FEATURE);
+        let evidence = gather(&project.tree()).unwrap();
+        assert_eq!(
+            justifications(&evidence, "REQ001"),
+            [Justification::Gherkin {
+                path: "features/login.feature".into(),
+                scenario: "Rejected".into()
+            }]
+        );
+    }
+
+    #[test]
+    fn a_scenario_tag_naming_an_unknown_requirement_is_a_problem() {
+        let project = Project::new()
+            .requirement("REQ002", &[])
+            .file("features/login.feature", LOGIN_FEATURE);
+        assert_eq!(
+            gather(&project.tree()).unwrap().problems,
+            [Problem::UnknownRequirement {
+                requirement: "REQ001".into(),
+                location: location("features/login.feature", 3)
+            }]
+        );
+    }
+
+    #[test]
+    fn a_tagged_scenario_sharing_its_name_is_an_error() {
+        let duplicated = format!("{LOGIN_FEATURE}  Scenario: Rejected\n    Then again\n");
+        let project = Project::new()
+            .requirement("REQ001", &[])
+            .file("features/login.feature", &duplicated);
+        let error = gather(&project.tree()).unwrap_err();
+        assert!(matches!(error, Error::DuplicateScenario { name, .. } if name == "Rejected"));
+    }
+
+    #[test]
+    fn a_feature_file_that_does_not_parse_is_an_error() {
+        let project = Project::new().requirement("REQ001", &[]).file(
+            "features/broken.feature",
+            "Feature: Login\n  Scenario without a colon\n",
+        );
+        let error = gather(&project.tree()).unwrap_err();
+        assert!(matches!(error, Error::Parse { .. }));
     }
 
     #[test]
