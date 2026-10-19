@@ -28,11 +28,11 @@ Feature: Read a Doorstop tree the way Doorstop does
     When I run "emperor check"
     Then the output contains "LLR001: file:tests/login.rs has not been accepted" exactly once
 
-  @pending @justifies:SPEC020
+  @justifies:SPEC020
   Scenario: L4 Folders with .doorstop.skip are ignored
     Given a Doorstop document "REQ" with no parent
     And a Doorstop document "TMP" with no parent in folder "vendor/tmp"
-    And the folder "vendor" contains a ".doorstop.skip" file
+    And the folder "vendor" contains a ".doorstop.skip-all" file
     And requirement "TMP001" referencing file "tests/tmp.rs"
     When I run "emperor check"
     Then the output does not contain "TMP001"

@@ -196,10 +196,11 @@ fn emperor_in(dir: &Path, args: &[&str]) -> std::process::Output {
 fn create_document(
     world: &mut ProjectWorld,
     prefix: String,
+    folder: &str,
     parent: Option<&str>,
     item_format: &str,
 ) {
-    let dir = world.path(&prefix.to_lowercase());
+    let dir = world.path(folder);
     fs::create_dir_all(&dir).unwrap();
     let parent = parent
         .map(|parent| format!("  parent: {parent}\n"))
@@ -218,12 +219,28 @@ fn create_document(
 
 #[given(expr = "a Doorstop document {string} with no parent")]
 fn document_without_parent(world: &mut ProjectWorld, prefix: String) {
-    create_document(world, prefix, None, "yaml");
+    create_document(world, prefix.clone(), &prefix.to_lowercase(), None, "yaml");
+}
+
+#[given(expr = "a Doorstop document {string} with no parent in folder {string}")]
+fn document_in_folder(world: &mut ProjectWorld, prefix: String, folder: String) {
+    create_document(world, prefix, &folder, None, "yaml");
+}
+
+#[given(expr = "the folder {string} contains a {string} file")]
+fn folder_contains_file(world: &mut ProjectWorld, folder: String, file: String) {
+    world.write_file(&format!("{folder}/{file}"), "");
 }
 
 #[given(expr = "a Doorstop document {string} with parent {string}")]
 fn document_with_parent(world: &mut ProjectWorld, prefix: String, parent: String) {
-    create_document(world, prefix, Some(&parent), "yaml");
+    create_document(
+        world,
+        prefix.clone(),
+        &prefix.to_lowercase(),
+        Some(&parent),
+        "yaml",
+    );
 }
 
 #[given(expr = "the document {string} includes {string} in its reviewed attributes")]
@@ -239,7 +256,13 @@ fn empty_project(_world: &mut ProjectWorld) {}
 
 #[given(expr = "a Doorstop document {string} with no parent and item format {string}")]
 fn document_with_item_format(world: &mut ProjectWorld, prefix: String, item_format: String) {
-    create_document(world, prefix, None, &item_format);
+    create_document(
+        world,
+        prefix.clone(),
+        &prefix.to_lowercase(),
+        None,
+        &item_format,
+    );
 }
 
 #[given(expr = "requirement {string} with text {string} referencing file {string}")]
