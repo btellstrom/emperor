@@ -204,9 +204,22 @@ fn load_item(path: &Path) -> Result<Item> {
         uid,
         active: file.active,
         text: file.text.unwrap_or_default().trim().to_string(),
-        references: file.references.unwrap_or_default(),
-        justified_by: file.justified_by.unwrap_or_default(),
+        references: trimmed(file.references),
+        justified_by: trimmed(file.justified_by),
     })
+}
+
+/// Doorstop rewrites a long value as a literal block, which ends in a newline.
+fn trimmed(references: Option<Vec<Reference>>) -> Vec<Reference> {
+    let mut references = references.unwrap_or_default();
+    for reference in &mut references {
+        reference.path = reference.path.trim().to_string();
+        reference.item = reference
+            .item
+            .as_deref()
+            .map(|item| item.trim().to_string());
+    }
+    references
 }
 
 fn read_yaml<T: DeserializeOwned>(path: &Path) -> Result<T> {

@@ -99,3 +99,28 @@ Feature: Read a Doorstop tree the way Doorstop does
     And requirement "TMP001" referencing file "tests/tmp.rs"
     When I run "emperor check"
     Then the exit code is 0
+
+  @justifies:SPEC021
+  Scenario: L11 A justification Doorstop wrote as a block is understood
+    # Doorstop rewrites a long value as a literal block, which ends in a newline.
+    Given a Doorstop document "REQ" with no parent
+    And the file "tests/login.rs" contains:
+      """
+      #[test]
+      fn rejects_bad_password() {}
+      """
+    And the file "req/REQ001.yml" contains:
+      """
+      active: true
+      justified_by:
+      - item: |
+          rejects_bad_password
+        path: |
+          tests/login.rs
+        type: rust-fn
+      text: |
+        A requirement
+      """
+    When I run "emperor accept REQ001"
+    And I run "emperor check"
+    Then the exit code is 0
