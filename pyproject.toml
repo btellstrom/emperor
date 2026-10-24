@@ -8,4 +8,15 @@ dependencies = []
 [dependency-groups]
 dev = [
     "doorstop>=3.2",
+    "doorstop-review",
+    "pexpect>=4.9",
+    "pytest>=8.4",
+    "pytest-bdd>=8.1",
+    "ruff>=0.14",
 ]
+
+[tool.uv.workspace]
+members = ["doorstop-review"]
+
+[tool.uv.sources]
+doorstop-review = { workspace = true }
