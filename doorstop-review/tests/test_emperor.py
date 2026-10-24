@@ -44,3 +44,8 @@ def test_a_check_that_could_not_run_is_an_error(monkeypatch):
     monkeypatch.setattr(emperor, "_run", lambda binary, *arguments: (2, "", "error: bad tree"))
     with pytest.raises(ReviewError, match="emperor check failed"):
         emperor.problems("emperor")
+
+
+def test_problems_are_summarised_by_kind():
+    kinds = ["unaccepted", "changed", "unaccepted"]
+    assert emperor.summary([{"kind": kind} for kind in kinds]) == "1 changed, 2 unaccepted"

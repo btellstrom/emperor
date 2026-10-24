@@ -1,5 +1,6 @@
 """emperor, when the repository uses it: a repository uses emperor when it has emperor.lock."""
 
+import collections
 import json
 import os
 import pathlib
@@ -44,3 +45,9 @@ def accept(binary, uid):
     code, _output, error = _run(binary, "accept", uid)
     if code != 0:
         raise ReviewError(f"Doorstop now has {uid} reviewed, but emperor accept failed:\n{error}")
+
+
+def summary(problems):
+    """How many problems of each kind, such as `1 changed, 2 unaccepted`."""
+    counts = collections.Counter(problem["kind"] for problem in problems)
+    return ", ".join(f"{n} {kind}" for kind, n in sorted(counts.items()))

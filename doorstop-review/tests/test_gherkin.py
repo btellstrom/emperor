@@ -63,3 +63,21 @@ def test_a_scenario_justifies_its_own_and_its_features_requirements(tmp_path):
     rejected, outline, _ = found(tmp_path)
     assert justified(rejected) == ["REQ001", "REQ002"]
     assert justified(outline) == ["REQ001"]
+
+
+def test_scenarios_inside_doc_strings_are_not_scenarios(tmp_path):
+    path = tmp_path / "fixtures.feature"
+    path.write_text(
+        "Feature: Fixtures\n\n  Scenario: Writes a feature file\n    Given the file contains:\n"
+        '      """\n      Feature: Inner\n\n        Scenario: Inner one\n          Then x\n      """\n'
+        "    Then it is read\n\n  Scenario: Second\n    Then y\n"
+    )
+    scenarios = scenarios_in(path)
+    assert [s["name"] for s in scenarios] == ["Writes a feature file", "Second"]
+    assert scenarios[0]["lines"][scenarios[0]["end"] - 1] == "    Then it is read"
+
+
+def test_a_file_without_a_feature_line_justifies_only_what_its_scenarios_name(tmp_path):
+    path = tmp_path / "loose.feature"
+    path.write_text("@justifies:REQ001\nScenario: Loose\n  Then x\n")
+    assert justified(scenarios_in(path)[0]) == ["REQ001"]

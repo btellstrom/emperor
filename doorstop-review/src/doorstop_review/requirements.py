@@ -92,13 +92,8 @@ class Review:
         ]
         lines.append("    Justified by" if named else "    Justified by nothing")
         lines += named
-        kinds = {}
-        for problem in self.problems.get(uid, []):
-            kinds[problem["kind"]] = kinds.get(problem["kind"], 0) + 1
-        if kinds:
-            lines.append(
-                "    emperor: " + ", ".join(f"{n} {kind}" for kind, n in sorted(kinds.items()))
-            )
+        if uid in self.problems:
+            lines.append("    emperor: " + emperor.summary(self.problems[uid]))
         return lines
 
     def context(self, item):
@@ -123,14 +118,10 @@ class Review:
             else:
                 found.append((f"{path}, the whole file", fence, read(path)))
         for scenario in self.scenarios.get(str(item.uid), []):
+            verdict = self.scenario_verdict(scenario)
             block = scenario["lines"][scenario["start"] : scenario["end"]]
-            found.append(
-                (
-                    f"{scenario['path']} · {scenario['name']} (scenario {self.scenario_verdict(scenario)})",
-                    "gherkin",
-                    textwrap.dedent("\n".join(block)),
-                )
-            )
+            title = f"{scenario['path']} · {scenario['name']} (scenario {verdict})"
+            found.append((title, "gherkin", textwrap.dedent("\n".join(block))))
         return found
 
     def summary(self, current, markdown=True):
@@ -222,12 +213,7 @@ class Phase:
         rows = [("dim", line) for line in self.review.context(current)]
         rows += [("highlight", line) for line in self.review.describe(current)]
         if not current.heading:
-            for title, _fence, body in self.review.justifications(current):
-                rows += [("plain", ""), ("heading", title)]
-                if body is None:
-                    rows.append(("note", "  Not found."))
-                else:
-                    rows += [("plain", "  " + line) for line in body.rstrip("\n").split("\n")]
+            rows += justification_rows(self.review, current)
         return {
             "title": f"{current.uid} · {self.review.heading(self.state)}",
             "label": tree.title(current),
@@ -240,7 +226,19 @@ class Phase:
         decide(self.state, item["requirement"], verdict, why, self.binary)
 
     def summary(self):
-        return self.review.summary(self.state, markdown=False)
+        return Review(self.state, self.binary).summary(self.state, markdown=False)
+
+
+def justification_rows(review, item):
+    """Screen rows with the other side of each of the item's justifications."""
+    rows = []
+    for title, _fence, body in review.justifications(item):
+        rows += [("plain", ""), ("heading", title)]
+        if body is None:
+            rows.append(("note", "  Not found."))
+        else:
+            rows += [("plain", "  " + line) for line in body.rstrip("\n").split("\n")]
+    return rows
 
 
 def sources(review, item):
@@ -252,8 +250,8 @@ def sources(review, item):
     return out
 
 
-def show(current, binary, note=None):
-    review = Review(current, binary)
+def show(current, note=None):
+    review = Review(current, emperor.find())
     if note:
         print(note + "\n")
     if not review.queue:
@@ -278,8 +276,9 @@ def show(current, binary, note=None):
     print(KEYS)
 
 
-def key(current, binary, message):
+def key(current, message):
     """Act on the reviewer's reply; returns the exit code (0 decided, 2 not a key, 3 question)."""
+    binary = emperor.find()
     verdict, rest = interpret(message)
     if verdict is None:
         print(NOT_A_KEY)
@@ -289,7 +288,6 @@ def key(current, binary, message):
     if item is None or stamp(item) != shown["stamp"]:
         show(
             current,
-            binary,
             "The requirement on screen has changed or gone since it was shown, "
             "so nothing was decided. Here is what is up for review now:",
         )
@@ -302,13 +300,13 @@ def key(current, binary, message):
         print("Reply `a` or `r` to decide it, or say continue to see it again.")
         return 3
     decide(current, item, verdict, rest, binary)
-    show(current, binary, f"{verdict.capitalize()} {tree.title(item)}.")
+    show(current, f"{verdict.capitalize()} {tree.title(item)}.")
     return 0
 
 
-def status(current, binary):
+def status(current):
     """Print what is left; returns 1 while any requirement is still to review."""
-    review = Review(current, binary)
+    review = Review(current, emperor.find())
     print(f"{len(review.queue)} of {len(review.items)} requirements still to review")
     print("\n".join(rejections(current, review.items)))
     return 1 if review.queue else 0

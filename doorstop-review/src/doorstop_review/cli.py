@@ -19,16 +19,19 @@ import sys
 
 import doorstop
 
-from . import emperor, gherkin, requirements, scenarios, terminal
+from . import gherkin, requirements, scenarios, terminal
 from .errors import ReviewError
 
 ERROR = 4
 AGAIN = "doorstop-review"
+HALVES = {"scenarios": scenarios, "requirements": requirements}
+COMMANDS = ("review", "show", "key", "status")
 
 
 def review_everything():
     """Scenarios first: accepting a requirement accepts the scenarios that justify it."""
     terminal.require_terminal()
+    # Created first so that a missing emperor stops the review before anything is decided.
     requirement_phase = requirements.Phase()
     if gherkin.all_scenarios():
         scenario_phase = scenarios.Phase()
@@ -63,33 +66,19 @@ def go_on_after_rejections(phase):
 
 
 def review_half(half, command):
-    again = f"{AGAIN} {half} review"
-    if half == "scenarios":
-        current = scenarios.load_state()
-        if command == "review":
-            phase = scenarios.Phase()
-            outcome, item = terminal.run(phase)
-            terminal.finish(outcome, item, phase, again)
-            return 0
-        if command == "show":
-            scenarios.show(current)
-            return 0
-        if command == "key":
-            return scenarios.key(current, sys.stdin.read())
-        return scenarios.status(current)
-    binary = emperor.find()
-    current = requirements.load_state()
+    module = HALVES[half]
     if command == "review":
-        phase = requirements.Phase()
+        phase = module.Phase()
         outcome, item = terminal.run(phase)
-        terminal.finish(outcome, item, phase, again)
+        terminal.finish(outcome, item, phase, f"{AGAIN} {half} review")
         return 0
+    current = module.load_state()
     if command == "show":
-        requirements.show(current, binary)
+        module.show(current)
         return 0
     if command == "key":
-        return requirements.key(current, binary, sys.stdin.read())
-    return requirements.status(current, binary)
+        return module.key(current, sys.stdin.read())
+    return module.status(current)
 
 
 def main():
@@ -98,11 +87,7 @@ def main():
         if not arguments:
             sys.exit(review_everything())
         half, command = arguments[0], arguments[1] if len(arguments) > 1 else "show"
-        if (
-            len(arguments) > 2
-            or half not in ("scenarios", "requirements")
-            or command not in ("review", "show", "key", "status")
-        ):
+        if len(arguments) > 2 or half not in HALVES or command not in COMMANDS:
             print(__doc__, file=sys.stderr)
             sys.exit(ERROR)
         sys.exit(review_half(half, command))
