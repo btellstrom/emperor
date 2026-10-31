@@ -2,6 +2,7 @@
 name = "emperor-tags"
 version = "0.1.0"
 edition = "2024"
+license = "MIT OR Apache-2.0"
 description = "The #[justifies(...)] attribute that links Rust functions to requirements for emperor"
 
 [lib]
